@@ -86,6 +86,7 @@ function run() {
                 const bundleUrl = `${prefix}${bundle.bundlePath}`;
                 core.info(bundleUrl);
                 const qrText = `taro://releases?url=${encodeURIComponent(bundleUrl)}&name=${encodeURIComponent(appName)}&logo=${encodeURIComponent(logo)}`;
+                core.info(qrText);
                 genQr(qrText, bundle.qrPath);
             }
             // 5. reset tag
@@ -108,6 +109,7 @@ function run() {
             });
         }
         catch (error) {
+            core.info(`${typeof error} ${JSON.stringify(error)}`);
             if (error instanceof SyntaxError) {
                 core.setFailed(error.message);
             }
