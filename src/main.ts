@@ -93,7 +93,7 @@ function genQr(text: string, dist: string): void {
   fse.ensureDirSync(path.dirname(QR_CODE_PNG_PATH))
   QRCode.toFile(QR_CODE_PNG_PATH, text, {type: 'png'}, err => {
     if (err) throw err
-    core.info(`generated: ${text} to ${path}`)
+    core.info(`generated: ${text} to ${dist}`)
   })
 }
 
