@@ -55,6 +55,7 @@ export async function run(): Promise<void> {
     // 5. reset tag
     await exec.exec(`git config --global user.name "${payload.pusher.name}"`)
     await exec.exec(`git config --global user.email "${payload.pusher.email}"`)
+    await exec.exec(`git status`)
     await exec.exec(`git tag -d ${tag}`)
     await exec.exec(`git push origin :refs/tags/${tag}`)
     await exec.exec(`git add .`)

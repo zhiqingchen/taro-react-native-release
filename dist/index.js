@@ -92,6 +92,7 @@ function run() {
             // 5. reset tag
             yield exec.exec(`git config --global user.name "${payload.pusher.name}"`);
             yield exec.exec(`git config --global user.email "${payload.pusher.email}"`);
+            yield exec.exec(`git status`);
             yield exec.exec(`git tag -d ${tag}`);
             yield exec.exec(`git push origin :refs/tags/${tag}`);
             yield exec.exec(`git add .`);
