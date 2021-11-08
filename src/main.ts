@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
+import * as fse from 'fs-extra'
 import * as github from '@actions/github'
 import * as io from '@actions/io'
 import * as path from 'path'
@@ -10,18 +11,23 @@ export async function run(): Promise<void> {
     // 0. get params from workflow
     const env = process.env
     let workspace = env['GITHUB_WORKSPACE']
-    core.info(`env: ${JSON.stringify(env)}`)
-    const respository = env['GITHUB_REPOSITORY']
+    core.info(`env: ${JSON.stringify(env, undefined, 2)}`)
+    const respository = env['GITHUB_REPOSITORY'] as string
     const ref = env['GITHUB_REF']
+    const owner = env['GITHUB_REPOSITORY_OWNER'] as string
     const payload = JSON.stringify(github.context.payload, undefined, 2)
     core.info(`payload: ${payload}`)
     const publicPath = core.getInput('PUBLICPATH') || 'https://cdn.jsdelivr.net/gh'
-    const tag = core.getInput('TAG') || ref?.replace(/^refs\/(heads|tags)\//, '')
+    const tag = (core.getInput('TAG') || ref?.replace(/^refs\/(heads|tags)\//, '')) as string
     const prefix = `${publicPath}/${respository}@${tag}/`
     const iosBundlePath = core.getInput('IOSBUNDLEPATH') || 'ios/main.js'
+    const iosQrPath = core.getInput('IOSQRPATH') || 'release/qrcode/ios.png'
+    const androidQrPath = core.getInput('ANDROIDQRPATH') || 'release/qrcode/android.png'
     const androidBundlePath = core.getInput('ANDROIDBUNDLEPATH') || 'android/main.js'
     const appName = core.getInput('APPNAME') || ''
     const logo = core.getInput('LOGO') || ''
+    const token = core.getInput('token')
+    const git = github.getOctokit(token)
 
     if (!workspace) {
       throw new Error('GITHUB_WORKSPACE not defined')
@@ -46,20 +52,20 @@ export async function run(): Promise<void> {
     bundles.push({
       platform: 'ios',
       bundlePath: iosBundlePath,
-      qrPath: 'qrcode/ios.png'
+      qrPath: iosQrPath
     })
 
     // 3. build android bundle
     bundles.push({
       platform: 'android',
       bundlePath: androidBundlePath,
-      qrPath: 'qrcode/android.png'
+      qrPath: androidQrPath
     })
 
     // 4. run
     for (const bundle of bundles) {
       await execDebug(`yarn build:rn --reset-cache --platform ${bundle.platform}`)
-      const bundleUrl = `${prefix}/${bundle.bundlePath}`
+      const bundleUrl = `${prefix}${bundle.bundlePath}`
       core.info(bundleUrl)
       const qrText = `taro://releases?url=${encodeURIComponent(bundleUrl)}&name=${encodeURIComponent(appName)}&logo=${encodeURIComponent(logo)}`
       genQr(qrText, bundle.qrPath)
@@ -74,6 +80,14 @@ export async function run(): Promise<void> {
     await execDebug(`git push origin ${tag}`)
 
     // 6.release
+    git.rest.repos.createRelease({
+      body: `|  AndroidBundle  |  iOSBundle  |
+| :--: | :--: |
+| ![AndroidBundle](${prefix}${androidQrPath}) | ![iOSBundle](${prefix}${androidQrPath}) |`,
+      owner,
+      repo: respository,
+      tag_name: tag
+    })
   } catch (error) {
     if (error instanceof SyntaxError) {
       core.setFailed(error.message)
@@ -83,6 +97,7 @@ export async function run(): Promise<void> {
 
 function genQr(text: string, dist: string): void {
   const QR_CODE_PNG_PATH = `${process.cwd()}/${dist}`
+  fse.ensureDirSync(path.dirname(QR_CODE_PNG_PATH))
   QRCode.toFile(QR_CODE_PNG_PATH, text, {type: 'png'}, err => {
     if (err) throw err
     core.info(`generated: ${text} to ${path}`)
