@@ -2,13 +2,15 @@ import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import * as github from '@actions/github'
 import * as io from '@actions/io'
+import * as path from 'path'
 import QRCode from 'qrcode'
 
 export async function run(): Promise<void> {
   try {
     // 0. get params from workflow
     const env = process.env
-    core.info(`env: ${env}`)
+    let workspace = env['GITHUB_WORKSPACE']
+    core.info(`env: ${JSON.stringify(env)}`)
     const respository = env['GITHUB_REPOSITORY']
     const ref = env['GITHUB_REF']
     const payload = JSON.stringify(github.context.payload, undefined, 2)
@@ -20,6 +22,15 @@ export async function run(): Promise<void> {
     const androidBundlePath = core.getInput('ANDROIDBUNDLEPATH') || 'android/main.js'
     const appName = core.getInput('APPNAME') || ''
     const logo = core.getInput('LOGO') || ''
+
+    if (!workspace) {
+      throw new Error('GITHUB_WORKSPACE not defined')
+    }
+    workspace = path.resolve(workspace)
+    core.debug(`GITHUB_WORKSPACE = '${workspace}'`)
+
+    const lsPath = await io.which('ls', true)
+    await execDebug(lsPath)
 
     // 1. install node modules
     let yarnPath = 'yarn'
@@ -70,8 +81,8 @@ export async function run(): Promise<void> {
   }
 }
 
-function genQr(text: string, path: string): void {
-  const QR_CODE_PNG_PATH = `${process.cwd()}/${path}`
+function genQr(text: string, dist: string): void {
+  const QR_CODE_PNG_PATH = `${process.cwd()}/${dist}`
   QRCode.toFile(QR_CODE_PNG_PATH, text, {type: 'png'}, err => {
     if (err) throw err
     core.info(`generated: ${text} to ${path}`)

@@ -43,13 +43,15 @@ const core = __importStar(__nccwpck_require__(2186));
 const exec = __importStar(__nccwpck_require__(1514));
 const github = __importStar(__nccwpck_require__(5438));
 const io = __importStar(__nccwpck_require__(7436));
+const path = __importStar(__nccwpck_require__(5622));
 const qrcode_1 = __importDefault(__nccwpck_require__(8726));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             // 0. get params from workflow
             const env = process.env;
-            core.info(`env: ${env}`);
+            let workspace = env['GITHUB_WORKSPACE'];
+            core.info(`env: ${JSON.stringify(env)}`);
             const respository = env['GITHUB_REPOSITORY'];
             const ref = env['GITHUB_REF'];
             const payload = JSON.stringify(github.context.payload, undefined, 2);
@@ -61,6 +63,13 @@ function run() {
             const androidBundlePath = core.getInput('ANDROIDBUNDLEPATH') || 'android/main.js';
             const appName = core.getInput('APPNAME') || '';
             const logo = core.getInput('LOGO') || '';
+            if (!workspace) {
+                throw new Error('GITHUB_WORKSPACE not defined');
+            }
+            workspace = path.resolve(workspace);
+            core.debug(`GITHUB_WORKSPACE = '${workspace}'`);
+            const lsPath = yield io.which('ls', true);
+            yield execDebug(lsPath);
             // 1. install node modules
             let yarnPath = 'yarn';
             try {
@@ -108,8 +117,8 @@ function run() {
     });
 }
 exports.run = run;
-function genQr(text, path) {
-    const QR_CODE_PNG_PATH = `${process.cwd()}/${path}`;
+function genQr(text, dist) {
+    const QR_CODE_PNG_PATH = `${process.cwd()}/${dist}`;
     qrcode_1.default.toFile(QR_CODE_PNG_PATH, text, { type: 'png' }, err => {
         if (err)
             throw err;
