@@ -2,7 +2,6 @@ import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import * as fse from 'fs-extra'
 import * as github from '@actions/github'
-import * as io from '@actions/io'
 import * as path from 'path'
 import QRCode from 'qrcode'
 
@@ -28,17 +27,8 @@ export async function run(): Promise<void> {
     const token = core.getInput('token')
     const git = github.getOctokit(token)
 
-    const lsPath = await io.which('ls', true)
-    await execDebug(lsPath)
-
     // 1. install node modules
-    let yarnPath = 'yarn'
-    try {
-      yarnPath = await io.which('yarn', true)
-    } catch (error) {
-      core.debug('Please install yarn in global.')
-    }
-    await execDebug(yarnPath)
+    await exec.exec('yarn')
 
     // 2. build ios bundle
     const bundles = []
@@ -57,7 +47,7 @@ export async function run(): Promise<void> {
 
     // 4. run
     for (const bundle of bundles) {
-      await execDebug(`yarn build:rn --reset-cache --platform ${bundle.platform}`)
+      await exec.exec(`yarn build:rn --reset-cache --platform ${bundle.platform}`)
       const bundleUrl = `${prefix}${bundle.bundlePath}`
       core.info(bundleUrl)
       const qrText = `taro://releases?url=${encodeURIComponent(bundleUrl)}&name=${encodeURIComponent(appName)}&logo=${encodeURIComponent(logo)}`
@@ -65,14 +55,14 @@ export async function run(): Promise<void> {
     }
 
     // 5. tag
-    await execDebug(`git config --global user.name "${payload.pusher.name}"`)
-    await execDebug(`git config --global user.email "${payload.pusher.email}"`)
-    await execDebug(`git tag -d ${tag}`)
-    await execDebug(`git push origin :refs/tags/${tag}`)
-    await execDebug(`git add .`)
-    await execDebug(`git commit -m "update by github actions"`)
-    await execDebug(`git tag ${tag}`)
-    await execDebug(`git push origin ${tag}`)
+    await exec.exec(`git config --global user.name "${payload.pusher.name}"`)
+    await exec.exec(`git config --global user.email "${payload.pusher.email}"`)
+    await exec.exec(`git tag -d ${tag}`)
+    await exec.exec(`git push origin :refs/tags/${tag}`)
+    await exec.exec(`git add .`)
+    await exec.exec(`git commit -m "update by github actions"`)
+    await exec.exec(`git tag ${tag}`)
+    await exec.exec(`git push origin ${tag}`)
 
     // 6.release
     git.rest.repos.createRelease({
@@ -97,30 +87,6 @@ function genQr(text: string, dist: string): void {
     if (err) throw err
     core.info(`generated: ${text} to ${dist}`)
   })
-}
-
-async function execDebug(command: string, args: string[] = []): Promise<void> {
-  const stdout: string[] = []
-  const stderr: string[] = []
-
-  const options: exec.ExecOptions = {
-    listeners: {
-      stdout: (data: Buffer) => {
-        stdout.push(data.toString())
-      },
-      stderr: (data: Buffer) => {
-        stderr.push(data.toString())
-      }
-    }
-  }
-  core.startGroup(`execute ${command}`)
-  await exec.exec(command, args, options)
-
-  core.debug(stdout.join(''))
-  if (stderr.length) {
-    throw new Error(stderr.join(''))
-  }
-  core.endGroup()
 }
 
 run()
