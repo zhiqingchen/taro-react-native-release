@@ -34,6 +34,10 @@ inputs:
   logo:
     required: false
     description: 'app logo'
+  releaseprefix:
+    required: false
+    description: 'release markdown prefix'
+    default: 'Use [Taro Playground App](https://github.com/wuba/taro-playground) to scan the following qr codes:'
 runs:
   using: 'node12'
   main: 'dist/index.js'

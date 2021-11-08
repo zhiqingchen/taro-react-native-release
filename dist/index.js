@@ -65,6 +65,7 @@ function run() {
             const androidQrPath = core.getInput('androidqrpath');
             const appName = core.getInput('appname');
             const logo = core.getInput('logo');
+            const releaseprefix = core.getInput('releaseprefix');
             const token = core.getInput('token');
             const git = github.getOctokit(token);
             // 2. ios bundle params
@@ -101,9 +102,14 @@ function run() {
             yield exec.exec(`git push origin ${tag}`);
             // 6. upload release
             git.rest.repos.createRelease({
-                body: `|  AndroidBundle  |  iOSBundle  |
+                body: `${releaseprefix}
+
+|  AndroidBundle  |  iOSBundle  |
 | :--: | :--: |
-| ![AndroidBundle](${prefix}${androidQrPath}) | ![iOSBundle](${prefix}${androidQrPath}) |`,
+| ![AndroidBundle](${prefix}${androidQrPath}) | ![iOSBundle](${prefix}${androidQrPath}) |
+| ${prefix}${androidBundlePath} | ${prefix}${iosBundlePath} |
+
+`,
                 owner,
                 repo: respository.replace(`${owner}/`, ''),
                 tag_name: tag
