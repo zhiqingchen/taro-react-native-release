@@ -14,7 +14,7 @@ export async function run(): Promise<void> {
     const respository = env['GITHUB_REPOSITORY'] as string
     const ref = env['GITHUB_REF']
     const owner = env['GITHUB_REPOSITORY_OWNER'] as string
-    // const payload = JSON.stringify(github.context.payload, undefined, 2)
+    const payload = github.context.payload
     // core.info(`payload: ${payload}`)
     const publicPath = core.getInput('publicpath')
     const tag = (core.getInput('tag') || ref?.replace(/^refs\/(heads|tags)\//, '')) as string
@@ -65,6 +65,8 @@ export async function run(): Promise<void> {
     }
 
     // 5. tag
+    await execDebug(`git config --global user.name "${payload.pusher.name}"`)
+    await execDebug(`git config --global user.email "${payload.pusher.email}"`)
     await execDebug(`git tag -d ${tag}`)
     await execDebug(`git push origin :refs/tags/${tag}`)
     await execDebug(`git add .`)
