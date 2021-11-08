@@ -10,12 +10,12 @@ export async function run(): Promise<void> {
   try {
     // 0. get params from workflow
     const env = process.env
-    core.info(`env: ${JSON.stringify(env, undefined, 2)}`)
+    // core.info(`env: ${JSON.stringify(env, undefined, 2)}`)
     const respository = env['GITHUB_REPOSITORY'] as string
     const ref = env['GITHUB_REF']
     const owner = env['GITHUB_REPOSITORY_OWNER'] as string
-    const payload = JSON.stringify(github.context.payload, undefined, 2)
-    core.info(`payload: ${payload}`)
+    // const payload = JSON.stringify(github.context.payload, undefined, 2)
+    // core.info(`payload: ${payload}`)
     const publicPath = core.getInput('publicpath')
     const tag = (core.getInput('tag') || ref?.replace(/^refs\/(heads|tags)\//, '')) as string
     const prefix = `${publicPath}/${respository}@${tag}/`
@@ -115,7 +115,9 @@ async function execDebug(command: string, args: string[] = []): Promise<void> {
   await exec.exec(command, args, options)
 
   core.debug(stdout.join(''))
-  core.debug(stderr.join(''))
+  if (stderr.length) {
+    throw new Error(stderr.join(''))
+  }
   core.endGroup()
 }
 
