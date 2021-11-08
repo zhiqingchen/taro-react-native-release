@@ -86,7 +86,7 @@ function run() {
                 yield exec.exec(`yarn build:rn --reset-cache --platform ${bundle.platform}`);
                 const bundleUrl = `${prefix}${bundle.bundlePath}`;
                 core.info(bundleUrl);
-                const qrText = `taro://releases?url=${encodeURIComponent(bundleUrl)}&name=${encodeURIComponent(appName)}&logo=${encodeURIComponent(logo)}`;
+                const qrText = `taro://releases?platform=${bundle.platform}&url=${encodeURIComponent(bundleUrl)}&name=${encodeURIComponent(appName)}&logo=${encodeURIComponent(logo)}`;
                 core.info(qrText);
                 genQr(qrText, bundle.qrPath);
             }
