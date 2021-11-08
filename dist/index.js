@@ -51,12 +51,12 @@ function run() {
         try {
             // 0. get params from workflow
             const env = process.env;
-            core.info(`env: ${JSON.stringify(env, undefined, 2)}`);
+            // core.info(`env: ${JSON.stringify(env, undefined, 2)}`)
             const respository = env['GITHUB_REPOSITORY'];
             const ref = env['GITHUB_REF'];
             const owner = env['GITHUB_REPOSITORY_OWNER'];
-            const payload = JSON.stringify(github.context.payload, undefined, 2);
-            core.info(`payload: ${payload}`);
+            const payload = github.context.payload;
+            // core.info(`payload: ${payload}`)
             const publicPath = core.getInput('publicpath');
             const tag = (core.getInput('tag') || (ref === null || ref === void 0 ? void 0 : ref.replace(/^refs\/(heads|tags)\//, '')));
             const prefix = `${publicPath}/${respository}@${tag}/`;
@@ -101,6 +101,8 @@ function run() {
                 genQr(qrText, bundle.qrPath);
             }
             // 5. tag
+            yield execDebug(`git config --global user.name "${payload.pusher.name}"`);
+            yield execDebug(`git config --global user.email "${payload.pusher.email}"`);
             yield execDebug(`git tag -d ${tag}`);
             yield execDebug(`git push origin :refs/tags/${tag}`);
             yield execDebug(`git add .`);
@@ -131,7 +133,7 @@ function genQr(text, dist) {
     qrcode_1.default.toFile(QR_CODE_PNG_PATH, text, { type: 'png' }, err => {
         if (err)
             throw err;
-        core.info(`generated: ${text} to ${path}`);
+        core.info(`generated: ${text} to ${dist}`);
     });
 }
 function execDebug(command, args = []) {
@@ -151,7 +153,9 @@ function execDebug(command, args = []) {
         core.startGroup(`execute ${command}`);
         yield exec.exec(command, args, options);
         core.debug(stdout.join(''));
-        core.debug(stderr.join(''));
+        if (stderr.length) {
+            throw new Error(stderr.join(''));
+        }
         core.endGroup();
     });
 }
