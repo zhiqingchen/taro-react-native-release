@@ -67,7 +67,7 @@ export async function run(): Promise<void> {
 | :--: | :--: |
 | ![AndroidBundle](${prefix}${androidQrPath}) | ![iOSBundle](${prefix}${androidQrPath}) |`,
       owner,
-      repo: respository,
+      repo: respository.replace(`${owner}/`, ''),
       tag_name: tag
     })
   } catch (error) {

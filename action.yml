@@ -31,11 +31,9 @@ inputs:
   appname:
     required: false
     description: 'app name'
-    default: ''
   logo:
     required: false
     description: 'app logo'
-    default: ''
 runs:
   using: 'node12'
   main: 'dist/index.js'
