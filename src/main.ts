@@ -10,30 +10,23 @@ export async function run(): Promise<void> {
   try {
     // 0. get params from workflow
     const env = process.env
-    let workspace = env['GITHUB_WORKSPACE']
     core.info(`env: ${JSON.stringify(env, undefined, 2)}`)
     const respository = env['GITHUB_REPOSITORY'] as string
     const ref = env['GITHUB_REF']
     const owner = env['GITHUB_REPOSITORY_OWNER'] as string
     const payload = JSON.stringify(github.context.payload, undefined, 2)
     core.info(`payload: ${payload}`)
-    const publicPath = core.getInput('PUBLICPATH') || 'https://cdn.jsdelivr.net/gh'
-    const tag = (core.getInput('TAG') || ref?.replace(/^refs\/(heads|tags)\//, '')) as string
+    const publicPath = core.getInput('publicpath')
+    const tag = (core.getInput('tag') || ref?.replace(/^refs\/(heads|tags)\//, '')) as string
     const prefix = `${publicPath}/${respository}@${tag}/`
-    const iosBundlePath = core.getInput('IOSBUNDLEPATH') || 'ios/main.js'
-    const iosQrPath = core.getInput('IOSQRPATH') || 'release/qrcode/ios.png'
-    const androidQrPath = core.getInput('ANDROIDQRPATH') || 'release/qrcode/android.png'
-    const androidBundlePath = core.getInput('ANDROIDBUNDLEPATH') || 'android/main.js'
-    const appName = core.getInput('APPNAME') || ''
-    const logo = core.getInput('LOGO') || ''
+    const iosBundlePath = core.getInput('iosbundlepath')
+    const iosQrPath = core.getInput('iosqrpath')
+    const androidBundlePath = core.getInput('androidbundlepath')
+    const androidQrPath = core.getInput('androidqrpath')
+    const appName = core.getInput('appname')
+    const logo = core.getInput('logo')
     const token = core.getInput('token')
     const git = github.getOctokit(token)
-
-    if (!workspace) {
-      throw new Error('GITHUB_WORKSPACE not defined')
-    }
-    workspace = path.resolve(workspace)
-    core.debug(`GITHUB_WORKSPACE = '${workspace}'`)
 
     const lsPath = await io.which('ls', true)
     await execDebug(lsPath)

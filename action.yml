@@ -1,11 +1,41 @@
-name: 'Your name here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'Taro React Native Release'
+description: 'Taro React Native Release'
+author: 'Tony Chen'
 inputs:
-  milliseconds: # change this
+  token:
     required: true
-    description: 'input description here'
-    default: 'default value if applicable'
+    description: 'github token'
+  publicpath:
+    required: false
+    description: 'asset public path'
+    default: 'https://cdn.jsdelivr.net/gh'
+  tag:
+    required: false
+    description: 'tag name'
+  iosbundlepath:
+    required: false
+    description: 'ios bundle path'
+    default: 'ios/main.js'
+  iosqrpath:
+    required: false
+    description: 'ios qr path'
+    default: 'release/qrcode/ios.png'
+  androidbundlepath:
+    required: false
+    description: 'android bundle path'
+    default: 'android/main.js'
+  androidqrpath:
+    required: false
+    description: 'android qr path'
+    default: 'release/qrcode/android.png'
+  appname:
+    required: false
+    description: 'app name'
+    default: ''
+  logo:
+    required: false
+    description: 'app logo'
+    default: ''
 runs:
   using: 'node12'
   main: 'dist/index.js'
