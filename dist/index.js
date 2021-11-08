@@ -43,20 +43,19 @@ const core = __importStar(__nccwpck_require__(2186));
 const exec = __importStar(__nccwpck_require__(1514));
 const fse = __importStar(__nccwpck_require__(5630));
 const github = __importStar(__nccwpck_require__(5438));
-const io = __importStar(__nccwpck_require__(7436));
 const path = __importStar(__nccwpck_require__(5622));
 const qrcode_1 = __importDefault(__nccwpck_require__(8726));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            // 0. get params from workflow
+            // 1. get params from workflow
             const env = process.env;
             // core.info(`env: ${JSON.stringify(env, undefined, 2)}`)
             const respository = env['GITHUB_REPOSITORY'];
             const ref = env['GITHUB_REF'];
             const owner = env['GITHUB_REPOSITORY_OWNER'];
             const payload = github.context.payload;
-            // core.info(`payload: ${payload}`)
+            // core.info(`payload: ${JSON.stringify(payload, undefined, 2)}`)
             const publicPath = core.getInput('publicpath');
             const tag = (core.getInput('tag') || (ref === null || ref === void 0 ? void 0 : ref.replace(/^refs\/(heads|tags)\//, '')));
             const prefix = `${publicPath}/${respository}@${tag}/`;
@@ -68,48 +67,37 @@ function run() {
             const logo = core.getInput('logo');
             const token = core.getInput('token');
             const git = github.getOctokit(token);
-            const lsPath = yield io.which('ls', true);
-            yield execDebug(lsPath);
-            // 1. install node modules
-            let yarnPath = 'yarn';
-            try {
-                yarnPath = yield io.which('yarn', true);
-            }
-            catch (error) {
-                core.debug('Please install yarn in global.');
-            }
-            yield execDebug(yarnPath);
-            // 2. build ios bundle
+            // 2. ios bundle params
             const bundles = [];
             bundles.push({
                 platform: 'ios',
                 bundlePath: iosBundlePath,
                 qrPath: iosQrPath
             });
-            // 3. build android bundle
+            // 3. android bundle params
             bundles.push({
                 platform: 'android',
                 bundlePath: androidBundlePath,
                 qrPath: androidQrPath
             });
-            // 4. run
+            // 4. run build bundle
             for (const bundle of bundles) {
-                yield execDebug(`yarn build:rn --reset-cache --platform ${bundle.platform}`);
+                yield exec.exec(`yarn build:rn --reset-cache --platform ${bundle.platform}`);
                 const bundleUrl = `${prefix}${bundle.bundlePath}`;
                 core.info(bundleUrl);
                 const qrText = `taro://releases?url=${encodeURIComponent(bundleUrl)}&name=${encodeURIComponent(appName)}&logo=${encodeURIComponent(logo)}`;
                 genQr(qrText, bundle.qrPath);
             }
-            // 5. tag
-            yield execDebug(`git config --global user.name "${payload.pusher.name}"`);
-            yield execDebug(`git config --global user.email "${payload.pusher.email}"`);
-            yield execDebug(`git tag -d ${tag}`);
-            yield execDebug(`git push origin :refs/tags/${tag}`);
-            yield execDebug(`git add .`);
-            yield execDebug(`git commit -m "update by github actions"`);
-            yield execDebug(`git tag ${tag}`);
-            yield execDebug(`git push origin ${tag}`);
-            // 6.release
+            // 5. reset tag
+            yield exec.exec(`git config --global user.name "${payload.pusher.name}"`);
+            yield exec.exec(`git config --global user.email "${payload.pusher.email}"`);
+            yield exec.exec(`git tag -d ${tag}`);
+            yield exec.exec(`git push origin :refs/tags/${tag}`);
+            yield exec.exec(`git add .`);
+            yield exec.exec(`git commit -m "update by github actions"`);
+            yield exec.exec(`git tag ${tag}`);
+            yield exec.exec(`git push origin ${tag}`);
+            // 6. upload release
             git.rest.repos.createRelease({
                 body: `|  AndroidBundle  |  iOSBundle  |
 | :--: | :--: |
@@ -134,29 +122,6 @@ function genQr(text, dist) {
         if (err)
             throw err;
         core.info(`generated: ${text} to ${dist}`);
-    });
-}
-function execDebug(command, args = []) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const stdout = [];
-        const stderr = [];
-        const options = {
-            listeners: {
-                stdout: (data) => {
-                    stdout.push(data.toString());
-                },
-                stderr: (data) => {
-                    stderr.push(data.toString());
-                }
-            }
-        };
-        core.startGroup(`execute ${command}`);
-        yield exec.exec(command, args, options);
-        core.debug(stdout.join(''));
-        if (stderr.length) {
-            throw new Error(stderr.join(''));
-        }
-        core.endGroup();
     });
 }
 run();
@@ -5393,261 +5358,20 @@ function removeHook(state, name, method) {
 
 /***/ }),
 
-/***/ 6726:
-/***/ ((module) => {
-
-function allocUnsafe (size) {
-  if (typeof size !== 'number') {
-    throw new TypeError('"size" argument must be a number')
-  }
-
-  if (size < 0) {
-    throw new RangeError('"size" argument must not be negative')
-  }
-
-  if (Buffer.allocUnsafe) {
-    return Buffer.allocUnsafe(size)
-  } else {
-    return new Buffer(size)
-  }
-}
-
-module.exports = allocUnsafe
-
-
-/***/ }),
-
-/***/ 6615:
+/***/ 1934:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-var bufferFill = __nccwpck_require__(2852)
-var allocUnsafe = __nccwpck_require__(6726)
+"use strict";
 
-module.exports = function alloc (size, fill, encoding) {
-  if (typeof size !== 'number') {
-    throw new TypeError('"size" argument must be a number')
-  }
 
-  if (size < 0) {
-    throw new RangeError('"size" argument must not be negative')
-  }
+var G = __nccwpck_require__(8640)
 
-  if (Buffer.alloc) {
-    return Buffer.alloc(size, fill, encoding)
-  }
-
-  var buffer = allocUnsafe(size)
-
-  if (size === 0) {
-    return buffer
-  }
-
-  if (fill === undefined) {
-    return bufferFill(buffer, 0)
-  }
-
-  if (typeof encoding !== 'string') {
-    encoding = undefined
-  }
-
-  return bufferFill(buffer, fill, encoding)
+module.exports = function() {
+  return (
+    typeof G.Promise === 'function' &&
+    typeof G.Promise.prototype.then === 'function'
+  )
 }
-
-
-/***/ }),
-
-/***/ 2852:
-/***/ ((module) => {
-
-/* Node.js 6.4.0 and up has full support */
-var hasFullSupport = (function () {
-  try {
-    if (!Buffer.isEncoding('latin1')) {
-      return false
-    }
-
-    var buf = Buffer.alloc ? Buffer.alloc(4) : new Buffer(4)
-
-    buf.fill('ab', 'ucs2')
-
-    return (buf.toString('hex') === '61006200')
-  } catch (_) {
-    return false
-  }
-}())
-
-function isSingleByte (val) {
-  return (val.length === 1 && val.charCodeAt(0) < 256)
-}
-
-function fillWithNumber (buffer, val, start, end) {
-  if (start < 0 || end > buffer.length) {
-    throw new RangeError('Out of range index')
-  }
-
-  start = start >>> 0
-  end = end === undefined ? buffer.length : end >>> 0
-
-  if (end > start) {
-    buffer.fill(val, start, end)
-  }
-
-  return buffer
-}
-
-function fillWithBuffer (buffer, val, start, end) {
-  if (start < 0 || end > buffer.length) {
-    throw new RangeError('Out of range index')
-  }
-
-  if (end <= start) {
-    return buffer
-  }
-
-  start = start >>> 0
-  end = end === undefined ? buffer.length : end >>> 0
-
-  var pos = start
-  var len = val.length
-  while (pos <= (end - len)) {
-    val.copy(buffer, pos)
-    pos += len
-  }
-
-  if (pos !== end) {
-    val.copy(buffer, pos, 0, end - pos)
-  }
-
-  return buffer
-}
-
-function fill (buffer, val, start, end, encoding) {
-  if (hasFullSupport) {
-    return buffer.fill(val, start, end, encoding)
-  }
-
-  if (typeof val === 'number') {
-    return fillWithNumber(buffer, val, start, end)
-  }
-
-  if (typeof val === 'string') {
-    if (typeof start === 'string') {
-      encoding = start
-      start = 0
-      end = buffer.length
-    } else if (typeof end === 'string') {
-      encoding = end
-      end = buffer.length
-    }
-
-    if (encoding !== undefined && typeof encoding !== 'string') {
-      throw new TypeError('encoding must be a string')
-    }
-
-    if (encoding === 'latin1') {
-      encoding = 'binary'
-    }
-
-    if (typeof encoding === 'string' && !Buffer.isEncoding(encoding)) {
-      throw new TypeError('Unknown encoding: ' + encoding)
-    }
-
-    if (val === '') {
-      return fillWithNumber(buffer, 0, start, end)
-    }
-
-    if (isSingleByte(val)) {
-      return fillWithNumber(buffer, val.charCodeAt(0), start, end)
-    }
-
-    val = new Buffer(val, encoding)
-  }
-
-  if (Buffer.isBuffer(val)) {
-    return fillWithBuffer(buffer, val, start, end)
-  }
-
-  // Other values (e.g. undefined, boolean, object) results in zero-fill
-  return fillWithNumber(buffer, 0, start, end)
-}
-
-module.exports = fill
-
-
-/***/ }),
-
-/***/ 3018:
-/***/ ((module) => {
-
-var toString = Object.prototype.toString
-
-var isModern = (
-  typeof Buffer.alloc === 'function' &&
-  typeof Buffer.allocUnsafe === 'function' &&
-  typeof Buffer.from === 'function'
-)
-
-function isArrayBuffer (input) {
-  return toString.call(input).slice(8, -1) === 'ArrayBuffer'
-}
-
-function fromArrayBuffer (obj, byteOffset, length) {
-  byteOffset >>>= 0
-
-  var maxLength = obj.byteLength - byteOffset
-
-  if (maxLength < 0) {
-    throw new RangeError("'offset' is out of bounds")
-  }
-
-  if (length === undefined) {
-    length = maxLength
-  } else {
-    length >>>= 0
-
-    if (length > maxLength) {
-      throw new RangeError("'length' is out of bounds")
-    }
-  }
-
-  return isModern
-    ? Buffer.from(obj.slice(byteOffset, byteOffset + length))
-    : new Buffer(new Uint8Array(obj.slice(byteOffset, byteOffset + length)))
-}
-
-function fromString (string, encoding) {
-  if (typeof encoding !== 'string' || encoding === '') {
-    encoding = 'utf8'
-  }
-
-  if (!Buffer.isEncoding(encoding)) {
-    throw new TypeError('"encoding" must be a valid string encoding')
-  }
-
-  return isModern
-    ? Buffer.from(string, encoding)
-    : new Buffer(string, encoding)
-}
-
-function bufferFrom (value, encodingOrOffset, length) {
-  if (typeof value === 'number') {
-    throw new TypeError('"value" argument must not be a number')
-  }
-
-  if (isArrayBuffer(value)) {
-    return fromArrayBuffer(value, encodingOrOffset, length)
-  }
-
-  if (typeof value === 'string') {
-    return fromString(value, encodingOrOffset)
-  }
-
-  return isModern
-    ? Buffer.from(value)
-    : new Buffer(value)
-}
-
-module.exports = bufferFrom
 
 
 /***/ }),
@@ -15792,7 +15516,7 @@ module.exports = BitBuffer
 /***/ 2270:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-var BufferUtil = __nccwpck_require__(5693)
+var Buffer = __nccwpck_require__(5693)
 
 /**
  * Helper class to handle QR Code symbol modules
@@ -15805,8 +15529,10 @@ function BitMatrix (size) {
   }
 
   this.size = size
-  this.data = BufferUtil.alloc(size * size)
-  this.reservedBit = BufferUtil.alloc(size * size)
+  this.data = new Buffer(size * size)
+  this.data.fill(0)
+  this.reservedBit = new Buffer(size * size)
+  this.reservedBit.fill(0)
 }
 
 /**
@@ -15866,12 +15592,12 @@ module.exports = BitMatrix
 /***/ 5456:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-var BufferUtil = __nccwpck_require__(5693)
+var Buffer = __nccwpck_require__(5693)
 var Mode = __nccwpck_require__(4373)
 
 function ByteData (data) {
   this.mode = Mode.BYTE
-  this.data = BufferUtil.from(data)
+  this.data = new Buffer(data)
 }
 
 ByteData.getBitsLength = function getBitsLength (length) {
@@ -16164,10 +15890,11 @@ exports.getEncodedBits = function getEncodedBits (errorCorrectionLevel, mask) {
 /***/ 6946:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-var BufferUtil = __nccwpck_require__(5693)
+var Buffer = __nccwpck_require__(5693)
 
-var EXP_TABLE = BufferUtil.alloc(512)
-var LOG_TABLE = BufferUtil.alloc(256)
+var EXP_TABLE = new Buffer(512)
+var LOG_TABLE = new Buffer(256)
+
 /**
  * Precompute the log and anti-log tables for faster computation later
  *
@@ -16768,7 +16495,7 @@ module.exports = NumericData
 /***/ 6277:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-var BufferUtil = __nccwpck_require__(5693)
+var Buffer = __nccwpck_require__(5693)
 var GF = __nccwpck_require__(6946)
 
 /**
@@ -16779,7 +16506,8 @@ var GF = __nccwpck_require__(6946)
  * @return {Buffer}    Product of p1 and p2
  */
 exports.mul = function mul (p1, p2) {
-  var coeff = BufferUtil.alloc(p1.length + p2.length - 1)
+  var coeff = new Buffer(p1.length + p2.length - 1)
+  coeff.fill(0)
 
   for (var i = 0; i < p1.length; i++) {
     for (var j = 0; j < p2.length; j++) {
@@ -16798,7 +16526,7 @@ exports.mul = function mul (p1, p2) {
  * @return {Buffer}          Remainder
  */
 exports.mod = function mod (divident, divisor) {
-  var result = BufferUtil.from(divident)
+  var result = new Buffer(divident)
 
   while ((result.length - divisor.length) >= 0) {
     var coeff = result[0]
@@ -16824,7 +16552,7 @@ exports.mod = function mod (divident, divisor) {
  * @return {Buffer}        Buffer containing polynomial coefficients
  */
 exports.generateECPolynomial = function generateECPolynomial (degree) {
-  var poly = BufferUtil.from([1])
+  var poly = new Buffer([1])
   for (var i = 0; i < degree; i++) {
     poly = exports.mul(poly, [1, GF.exp(i)])
   }
@@ -16838,7 +16566,7 @@ exports.generateECPolynomial = function generateECPolynomial (degree) {
 /***/ 6883:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-var BufferUtil = __nccwpck_require__(5693)
+var Buffer = __nccwpck_require__(5693)
 var Utils = __nccwpck_require__(5018)
 var ECLevel = __nccwpck_require__(7161)
 var BitBuffer = __nccwpck_require__(1710)
@@ -17167,7 +16895,7 @@ function createCodewords (bitBuffer, version, errorCorrectionLevel) {
   var dcData = new Array(ecTotalBlocks)
   var ecData = new Array(ecTotalBlocks)
   var maxDataSize = 0
-  var buffer = BufferUtil.from(bitBuffer.buffer)
+  var buffer = new Buffer(bitBuffer.buffer)
 
   // Divide the buffer into the required number of blocks
   for (var b = 0; b < ecTotalBlocks; b++) {
@@ -17185,7 +16913,7 @@ function createCodewords (bitBuffer, version, errorCorrectionLevel) {
 
   // Create final data
   // Interleave the data and error correction codewords from each block
-  var data = BufferUtil.alloc(totalCodewords)
+  var data = new Buffer(totalCodewords)
   var index = 0
   var i, r
 
@@ -17344,9 +17072,8 @@ exports.create = function create (data, options) {
 /***/ 226:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-var BufferUtil = __nccwpck_require__(5693)
+var Buffer = __nccwpck_require__(5693)
 var Polynomial = __nccwpck_require__(6277)
-var Buffer = __nccwpck_require__(4293).Buffer
 
 function ReedSolomonEncoder (degree) {
   this.genPoly = undefined
@@ -17380,7 +17107,8 @@ ReedSolomonEncoder.prototype.encode = function encode (data) {
 
   // Calculate EC for this data block
   // extends data size to data+genPoly size
-  var pad = BufferUtil.alloc(this.degree)
+  var pad = new Buffer(this.degree)
+  pad.fill(0)
   var paddedData = Buffer.concat([data, pad], data.length + this.degree)
 
   // The error correction codewords are the remainder after dividing the data codewords
@@ -17392,7 +17120,8 @@ ReedSolomonEncoder.prototype.encode = function encode (data) {
   // pad with 0s to the left to reach the needed number of coefficients
   var start = this.degree - remainder.length
   if (start > 0) {
-    var buff = BufferUtil.alloc(this.degree)
+    var buff = new Buffer(this.degree)
+    buff.fill(0)
     remainder.copy(buff, start)
 
     return buff
@@ -18387,35 +18116,24 @@ var BLOCK_CHAR = {
   BW: '▀'
 }
 
-var INVERTED_BLOCK_CHAR = {
-  BB: ' ',
-  BW: '▄',
-  WW: '█',
-  WB: '▀'
-}
-
-function getBlockChar (top, bottom, blocks) {
-  if (top && bottom) return blocks.BB
-  if (top && !bottom) return blocks.BW
-  if (!top && bottom) return blocks.WB
-  return blocks.WW
+function getBlockChar (top, bottom) {
+  if (top && bottom) return BLOCK_CHAR.BB
+  if (top && !bottom) return BLOCK_CHAR.BW
+  if (!top && bottom) return BLOCK_CHAR.WB
+  return BLOCK_CHAR.WW
 }
 
 exports.render = function (qrData, options, cb) {
-  var opts = Utils.getOptions(options)
-  var blocks = BLOCK_CHAR
-  if (opts.color.dark.hex === '#ffffff' || opts.color.light.hex === '#000000') {
-    blocks = INVERTED_BLOCK_CHAR
-  }
-
   var size = qrData.modules.size
   var data = qrData.modules.data
 
+  var opts = Utils.getOptions(options)
+
   var output = ''
-  var hMargin = Array(size + (opts.margin * 2) + 1).join(blocks.WW)
+  var hMargin = Array(size + (opts.margin * 2) + 1).join(BLOCK_CHAR.WW)
   hMargin = Array((opts.margin / 2) + 1).join(hMargin + '\n')
 
-  var vMargin = Array(opts.margin + 1).join(blocks.WW)
+  var vMargin = Array(opts.margin + 1).join(BLOCK_CHAR.WW)
 
   output += hMargin
   for (var i = 0; i < size; i += 2) {
@@ -18424,7 +18142,7 @@ exports.render = function (qrData, options, cb) {
       var topModule = data[i * size + j]
       var bottomModule = data[(i + 1) * size + j]
 
-      output += getBlockChar(topModule, bottomModule, blocks)
+      output += getBlockChar(topModule, bottomModule)
     }
 
     output += vMargin + '\n'
@@ -18457,10 +18175,6 @@ exports.renderToFile = function renderToFile (path, qrData, options, cb) {
 /***/ ((__unused_webpack_module, exports) => {
 
 function hex2rgba (hex) {
-  if (typeof hex === 'number') {
-    hex = hex.toString()
-  }
-
   if (typeof hex !== 'string') {
     throw new Error('Color should be defined as hex string')
   }
@@ -18560,7 +18274,7 @@ exports.qrToImageData = function qrToImageData (imgData, qr, opts) {
 /***/ 4610:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-var canPromise = __nccwpck_require__(7311)
+var canPromise = __nccwpck_require__(1934)
 var QRCode = __nccwpck_require__(6883)
 var PngRenderer = __nccwpck_require__(9874)
 var Utf8Renderer = __nccwpck_require__(2671)
@@ -18704,8 +18418,7 @@ exports.toFileStream = function toFileStream (stream, text, opts) {
 /***/ 5693:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-module.exports.alloc = __nccwpck_require__(6615)
-module.exports.from = __nccwpck_require__(3018)
+module.exports = __nccwpck_require__(4293).Buffer
 
 
 /***/ }),
@@ -19044,6 +18757,18 @@ exports.fromPromise = function (fn) {
     else fn.apply(this, args.slice(0, -1)).then(r => cb(null, r), cb)
   }, 'name', { value: fn.name })
 }
+
+
+/***/ }),
+
+/***/ 8640:
+/***/ (function(module) {
+
+"use strict";
+
+module.exports = (typeof self === 'object' && self.self === self && self) ||
+  (typeof global === 'object' && global.global === global && global) ||
+  this
 
 
 /***/ }),

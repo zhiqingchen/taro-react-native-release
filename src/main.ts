@@ -7,14 +7,14 @@ import QRCode from 'qrcode'
 
 export async function run(): Promise<void> {
   try {
-    // 0. get params from workflow
+    // 1. get params from workflow
     const env = process.env
     // core.info(`env: ${JSON.stringify(env, undefined, 2)}`)
     const respository = env['GITHUB_REPOSITORY'] as string
     const ref = env['GITHUB_REF']
     const owner = env['GITHUB_REPOSITORY_OWNER'] as string
     const payload = github.context.payload
-    // core.info(`payload: ${payload}`)
+    // core.info(`payload: ${JSON.stringify(payload, undefined, 2)}`)
     const publicPath = core.getInput('publicpath')
     const tag = (core.getInput('tag') || ref?.replace(/^refs\/(heads|tags)\//, '')) as string
     const prefix = `${publicPath}/${respository}@${tag}/`
@@ -27,10 +27,7 @@ export async function run(): Promise<void> {
     const token = core.getInput('token')
     const git = github.getOctokit(token)
 
-    // 1. install node modules
-    await exec.exec('yarn')
-
-    // 2. build ios bundle
+    // 2. ios bundle params
     const bundles = []
     bundles.push({
       platform: 'ios',
@@ -38,14 +35,14 @@ export async function run(): Promise<void> {
       qrPath: iosQrPath
     })
 
-    // 3. build android bundle
+    // 3. android bundle params
     bundles.push({
       platform: 'android',
       bundlePath: androidBundlePath,
       qrPath: androidQrPath
     })
 
-    // 4. run
+    // 4. run build bundle
     for (const bundle of bundles) {
       await exec.exec(`yarn build:rn --reset-cache --platform ${bundle.platform}`)
       const bundleUrl = `${prefix}${bundle.bundlePath}`
@@ -54,7 +51,7 @@ export async function run(): Promise<void> {
       genQr(qrText, bundle.qrPath)
     }
 
-    // 5. tag
+    // 5. reset tag
     await exec.exec(`git config --global user.name "${payload.pusher.name}"`)
     await exec.exec(`git config --global user.email "${payload.pusher.email}"`)
     await exec.exec(`git tag -d ${tag}`)
@@ -64,7 +61,7 @@ export async function run(): Promise<void> {
     await exec.exec(`git tag ${tag}`)
     await exec.exec(`git push origin ${tag}`)
 
-    // 6.release
+    // 6. upload release
     git.rest.repos.createRelease({
       body: `|  AndroidBundle  |  iOSBundle  |
 | :--: | :--: |
