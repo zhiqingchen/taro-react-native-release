@@ -68,10 +68,10 @@ export async function run(): Promise<void> {
     git.rest.repos.createRelease({
       body: `${releaseprefix}
 
-|  AndroidBundle  |  iOSBundle  |
-| :--: | :--: |
-| ![AndroidBundle](${prefix}${androidQrPath}) | ![iOSBundle](${prefix}${androidQrPath}) |
-| ${prefix}${androidBundlePath} | ${prefix}${iosBundlePath} |
+||  Android  |  iOS  |
+| :--: | :--: | :--: |
+| QR code | ![AndroidBundle](${prefix}${androidQrPath}) | ![iOSBundle](${prefix}${iosQrPath}) |
+| Bundle file url | ${prefix}${androidBundlePath} | ${prefix}${iosBundlePath} |
 
 `,
       owner,
