@@ -54,7 +54,7 @@ function run() {
             const respository = env['GITHUB_REPOSITORY'];
             const owner = env['GITHUB_REPOSITORY_OWNER'];
             const payload = github.context.payload;
-            // core.info(`payload: ${JSON.stringify(payload, undefined, 2)}`)
+            core.info(`payload: ${JSON.stringify(payload, undefined, 2)}`);
             const publicPath = core.getInput('publicpath');
             const refname = (core.getInput('refname') || env['GITHUB_REF_NAME']);
             const prefix = `${publicPath}/${respository}@${refname}/`;
