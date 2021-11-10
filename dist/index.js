@@ -88,13 +88,14 @@ function run() {
                 platform: 'android',
                 bundlePath: androidBundlePath,
                 qrPath: androidQrPath,
-                iosAssetsDest: androidAssetsDest,
+                assetsDest: androidAssetsDest,
                 publicPath: `${publicPathPerfix}${androidAssetsDest}`
             });
             // 4. run build bundle
             for (const bundle of bundles) {
                 const { platform, bundlePath, qrPath, assetsDest, publicPath } = bundle;
-                yield exec.exec(`yarn build:rn --reset-cache --platform ${platform} --bundle-output ${bundlePath} --assets-dest ${assetsDest} --publicPath ${publicPath}`);
+                const sourcemapparms = getSourceMapParams(platform);
+                yield exec.exec(`yarn build:rn --reset-cache --platform ${platform} --bundle-output ${bundlePath} --assets-dest ${assetsDest} --publicPath ${publicPath} ${sourcemapparms}`);
                 yield exec.exec(`mv ${publicPath} ${assetsDest}`);
                 const bundleUrl = `${prefix}${bundlePath}`;
                 core.info(bundleUrl);
@@ -143,6 +144,22 @@ function run() {
     });
 }
 exports.run = run;
+function getSourceMapParams(platform) {
+    const result = [];
+    const sourcemapOutput = core.getInput(`${platform}sourcemapoutput`);
+    const sourcemapUseAbsolutePath = core.getInput(`${platform}sourcemapuseabsolutepath`);
+    const sourcemapSourcesRoot = core.getInput(`${platform}sourcemapsourcesroot`);
+    if (sourcemapOutput) {
+        result.push(`--sourcemap-output ${sourcemapOutput}`);
+    }
+    if (sourcemapUseAbsolutePath) {
+        result.push(`--sourcemap-use-absolute-path ${sourcemapUseAbsolutePath}`);
+    }
+    if (sourcemapSourcesRoot) {
+        result.push(`--sourcemap-sources-root ${sourcemapSourcesRoot}`);
+    }
+    return result.join(' ');
+}
 function genQr(text, dist) {
     const QR_CODE_PNG_PATH = `${process.cwd()}/${dist}`;
     fse.ensureDirSync(path.dirname(QR_CODE_PNG_PATH));
