@@ -11,13 +11,12 @@ export async function run(): Promise<void> {
     const env = process.env
     core.info(`env: ${JSON.stringify(env, undefined, 2)}`)
     const respository = env['GITHUB_REPOSITORY'] as string
-    const ref = env['GITHUB_REF']
     const owner = env['GITHUB_REPOSITORY_OWNER'] as string
     const payload = github.context.payload
     // core.info(`payload: ${JSON.stringify(payload, undefined, 2)}`)
     const publicPath = core.getInput('publicpath')
-    const tag = (core.getInput('tag') || ref?.replace(/^refs\/(heads|tags)\//, '')) as string
-    const prefix = `${publicPath}/${respository}@${tag}/`
+    const refname = (core.getInput('refname') || env['GITHUB_REF_NAME']) as string
+    const prefix = `${publicPath}/${respository}@${refname}/`
     const iosBundlePath = core.getInput('iosbundlepath')
     const iosQrPath = core.getInput('iosqrpath')
     const androidBundlePath = core.getInput('androidbundlepath')
@@ -28,7 +27,7 @@ export async function run(): Promise<void> {
     const token = core.getInput('token')
     const git = github.getOctokit(token)
 
-    const isFromTag = ref?.startsWith('refs/tags')
+    const refType = env['GITHUB_REF_TYPE']
 
     // 2. ios bundle params
     const bundles = []
@@ -55,20 +54,21 @@ export async function run(): Promise<void> {
       genQr(qrText, bundle.qrPath)
     }
 
-    // 5. reset tag
+    // 5. git commit
     await exec.exec(`git config --global user.name "${payload.pusher.name}"`)
     await exec.exec(`git config --global user.email "${payload.pusher.email}"`)
     await exec.exec(`git status`)
     await exec.exec(`git add .`)
     await exec.exec(`git commit -m "update by github actions"`)
 
-    if (isFromTag) {
-      await exec.exec(`git tag -d ${tag}`)
-      await exec.exec(`git push origin :refs/tags/${tag}`)
-      await exec.exec(`git tag ${tag}`)
-      await exec.exec(`git push origin ${tag}`)
+    if (refType === 'tag') {
+      // 6. reset tag
+      await exec.exec(`git tag -d ${refname}`)
+      await exec.exec(`git push origin :refs/tags/${refname}`)
+      await exec.exec(`git tag ${refname}`)
+      await exec.exec(`git push origin ${refname}`)
 
-      // 6. upload release
+      // 7. upload release
       git.rest.repos.createRelease({
         body: `${releaseprefix}
 
@@ -80,9 +80,10 @@ export async function run(): Promise<void> {
   `,
         owner,
         repo: respository.replace(`${owner}/`, ''),
-        tag_name: tag
+        tag_name: refname
       })
-    } else {
+    } else if (refType === 'branch') {
+      // 6. push branch
       await exec.exec(`git push origin`)
       core.info(`open ${prefix}${androidQrPath}, and san to prview android release.`)
       core.info(`open ${prefix}${iosQrPath}, and san to prview ios release.`)

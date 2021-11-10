@@ -9,9 +9,9 @@ inputs:
     required: false
     description: 'asset public path'
     default: 'https://cdn.jsdelivr.net/gh'
-  tag:
+  refname:
     required: false
-    description: 'tag name'
+    description: 'ref name, tag or branch'
   iosbundlepath:
     required: false
     description: 'ios bundle path'
