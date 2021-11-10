@@ -9,7 +9,7 @@ export async function run(): Promise<void> {
   try {
     // 1. get params from workflow
     const env = process.env
-    // core.info(`env: ${JSON.stringify(env, undefined, 2)}`)
+    core.info(`env: ${JSON.stringify(env, undefined, 2)}`)
     const respository = env['GITHUB_REPOSITORY'] as string
     const ref = env['GITHUB_REF']
     const owner = env['GITHUB_REPOSITORY_OWNER'] as string
@@ -27,6 +27,8 @@ export async function run(): Promise<void> {
     const releaseprefix = core.getInput('releaseprefix')
     const token = core.getInput('token')
     const git = github.getOctokit(token)
+
+    const isFromTag = ref?.startsWith('refs/tags')
 
     // 2. ios bundle params
     const bundles = []
@@ -57,27 +59,34 @@ export async function run(): Promise<void> {
     await exec.exec(`git config --global user.name "${payload.pusher.name}"`)
     await exec.exec(`git config --global user.email "${payload.pusher.email}"`)
     await exec.exec(`git status`)
-    await exec.exec(`git tag -d ${tag}`)
-    await exec.exec(`git push origin :refs/tags/${tag}`)
     await exec.exec(`git add .`)
     await exec.exec(`git commit -m "update by github actions"`)
-    await exec.exec(`git tag ${tag}`)
-    await exec.exec(`git push origin ${tag}`)
 
-    // 6. upload release
-    git.rest.repos.createRelease({
-      body: `${releaseprefix}
+    if (isFromTag) {
+      await exec.exec(`git tag -d ${tag}`)
+      await exec.exec(`git push origin :refs/tags/${tag}`)
+      await exec.exec(`git tag ${tag}`)
+      await exec.exec(`git push origin ${tag}`)
+
+      // 6. upload release
+      git.rest.repos.createRelease({
+        body: `${releaseprefix}
 
 ||  Android  |  iOS  |
 | :--: | :--: | :--: |
 | QR code | ![AndroidBundle](${prefix}${androidQrPath}) | ![iOSBundle](${prefix}${iosQrPath}) |
 | Bundle file url | ${prefix}${androidBundlePath} | ${prefix}${iosBundlePath} |
 
-`,
-      owner,
-      repo: respository.replace(`${owner}/`, ''),
-      tag_name: tag
-    })
+  `,
+        owner,
+        repo: respository.replace(`${owner}/`, ''),
+        tag_name: tag
+      })
+    } else {
+      await exec.exec(`git push origin`)
+      core.info(`open ${prefix}${androidQrPath}, and san to prview android release.`)
+      core.info(`open ${prefix}${iosQrPath}, and san to prview ios release.`)
+    }
   } catch (error) {
     core.info(`${typeof error} ${JSON.stringify(error)}`)
     if (error instanceof SyntaxError) {

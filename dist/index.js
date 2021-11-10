@@ -50,7 +50,7 @@ function run() {
         try {
             // 1. get params from workflow
             const env = process.env;
-            // core.info(`env: ${JSON.stringify(env, undefined, 2)}`)
+            core.info(`env: ${JSON.stringify(env, undefined, 2)}`);
             const respository = env['GITHUB_REPOSITORY'];
             const ref = env['GITHUB_REF'];
             const owner = env['GITHUB_REPOSITORY_OWNER'];
@@ -68,6 +68,7 @@ function run() {
             const releaseprefix = core.getInput('releaseprefix');
             const token = core.getInput('token');
             const git = github.getOctokit(token);
+            const isFromTag = ref === null || ref === void 0 ? void 0 : ref.startsWith('refs/tags');
             // 2. ios bundle params
             const bundles = [];
             bundles.push({
@@ -94,26 +95,33 @@ function run() {
             yield exec.exec(`git config --global user.name "${payload.pusher.name}"`);
             yield exec.exec(`git config --global user.email "${payload.pusher.email}"`);
             yield exec.exec(`git status`);
-            yield exec.exec(`git tag -d ${tag}`);
-            yield exec.exec(`git push origin :refs/tags/${tag}`);
             yield exec.exec(`git add .`);
             yield exec.exec(`git commit -m "update by github actions"`);
-            yield exec.exec(`git tag ${tag}`);
-            yield exec.exec(`git push origin ${tag}`);
-            // 6. upload release
-            git.rest.repos.createRelease({
-                body: `${releaseprefix}
+            if (isFromTag) {
+                yield exec.exec(`git tag -d ${tag}`);
+                yield exec.exec(`git push origin :refs/tags/${tag}`);
+                yield exec.exec(`git tag ${tag}`);
+                yield exec.exec(`git push origin ${tag}`);
+                // 6. upload release
+                git.rest.repos.createRelease({
+                    body: `${releaseprefix}
 
-|  AndroidBundle  |  iOSBundle  |
-| :--: | :--: |
-| ![AndroidBundle](${prefix}${androidQrPath}) | ![iOSBundle](${prefix}${androidQrPath}) |
-| ${prefix}${androidBundlePath} | ${prefix}${iosBundlePath} |
+||  Android  |  iOS  |
+| :--: | :--: | :--: |
+| QR code | ![AndroidBundle](${prefix}${androidQrPath}) | ![iOSBundle](${prefix}${iosQrPath}) |
+| Bundle file url | ${prefix}${androidBundlePath} | ${prefix}${iosBundlePath} |
 
-`,
-                owner,
-                repo: respository.replace(`${owner}/`, ''),
-                tag_name: tag
-            });
+  `,
+                    owner,
+                    repo: respository.replace(`${owner}/`, ''),
+                    tag_name: tag
+                });
+            }
+            else {
+                yield exec.exec(`git push origin`);
+                core.info(`open ${prefix}${androidQrPath}, and san to prview android release.`);
+                core.info(`open ${prefix}${iosQrPath}, and san to prview ios release.`);
+            }
         }
         catch (error) {
             core.info(`${typeof error} ${JSON.stringify(error)}`);
