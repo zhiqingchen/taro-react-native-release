@@ -52,13 +52,12 @@ function run() {
             const env = process.env;
             core.info(`env: ${JSON.stringify(env, undefined, 2)}`);
             const respository = env['GITHUB_REPOSITORY'];
-            const ref = env['GITHUB_REF'];
             const owner = env['GITHUB_REPOSITORY_OWNER'];
             const payload = github.context.payload;
             // core.info(`payload: ${JSON.stringify(payload, undefined, 2)}`)
             const publicPath = core.getInput('publicpath');
-            const tag = (core.getInput('tag') || (ref === null || ref === void 0 ? void 0 : ref.replace(/^refs\/(heads|tags)\//, '')));
-            const prefix = `${publicPath}/${respository}@${tag}/`;
+            const refname = (core.getInput('refname') || env['GITHUB_REF_NAME']);
+            const prefix = `${publicPath}/${respository}@${refname}/`;
             const iosBundlePath = core.getInput('iosbundlepath');
             const iosQrPath = core.getInput('iosqrpath');
             const androidBundlePath = core.getInput('androidbundlepath');
@@ -68,7 +67,7 @@ function run() {
             const releaseprefix = core.getInput('releaseprefix');
             const token = core.getInput('token');
             const git = github.getOctokit(token);
-            const isFromTag = ref === null || ref === void 0 ? void 0 : ref.startsWith('refs/tags');
+            const refType = env['GITHUB_REF_TYPE'];
             // 2. ios bundle params
             const bundles = [];
             bundles.push({
@@ -91,18 +90,19 @@ function run() {
                 core.info(qrText);
                 genQr(qrText, bundle.qrPath);
             }
-            // 5. reset tag
+            // 5. git commit
             yield exec.exec(`git config --global user.name "${payload.pusher.name}"`);
             yield exec.exec(`git config --global user.email "${payload.pusher.email}"`);
             yield exec.exec(`git status`);
             yield exec.exec(`git add .`);
             yield exec.exec(`git commit -m "update by github actions"`);
-            if (isFromTag) {
-                yield exec.exec(`git tag -d ${tag}`);
-                yield exec.exec(`git push origin :refs/tags/${tag}`);
-                yield exec.exec(`git tag ${tag}`);
-                yield exec.exec(`git push origin ${tag}`);
-                // 6. upload release
+            if (refType === 'tag') {
+                // 6. reset tag
+                yield exec.exec(`git tag -d ${refname}`);
+                yield exec.exec(`git push origin :refs/tags/${refname}`);
+                yield exec.exec(`git tag ${refname}`);
+                yield exec.exec(`git push origin ${refname}`);
+                // 7. upload release
                 git.rest.repos.createRelease({
                     body: `${releaseprefix}
 
@@ -114,10 +114,11 @@ function run() {
   `,
                     owner,
                     repo: respository.replace(`${owner}/`, ''),
-                    tag_name: tag
+                    tag_name: refname
                 });
             }
-            else {
+            else if (refType === 'branch') {
+                // 6. push branch
                 yield exec.exec(`git push origin`);
                 core.info(`open ${prefix}${androidQrPath}, and san to prview android release.`);
                 core.info(`open ${prefix}${iosQrPath}, and san to prview ios release.`);
