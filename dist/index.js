@@ -56,13 +56,18 @@ function run() {
             const owner = env['GITHUB_REPOSITORY_OWNER'];
             const payload = github.context.payload;
             core.info(`payload: ${JSON.stringify(payload, undefined, 2)}`);
-            const publicPath = core.getInput('publicpath');
+            const cdnhost = core.getInput('cdnhost');
+            const cdnpath = core.getInput('cdnpath');
             const refname = (core.getInput('refname') || env['GITHUB_REF_NAME']);
-            const prefix = `${publicPath}/${respository}@${refname}/`;
-            const iosBundlePath = core.getInput('iosbundlepath');
+            // like '/gh/zhiqingchen/Taro-Mortgage-Calculator@feat-remote-bundle/'
+            const publicPathPerfix = `${cdnpath}/${respository}@${refname}/`;
+            const prefix = `${cdnhost}${publicPathPerfix}`;
+            const iosBundlePath = core.getInput('iosbundleoutput');
             const iosQrPath = core.getInput('iosqrpath');
-            const androidBundlePath = core.getInput('androidbundlepath');
+            const iosAssetsDest = core.getInput('iosassetsdest');
+            const androidBundlePath = core.getInput('androidbundleoutput');
             const androidQrPath = core.getInput('androidqrpath');
+            const androidAssetsDest = core.getInput('androidassetsdest');
             const appName = core.getInput('appname');
             const logo = core.getInput('logo');
             const releaseprefix = core.getInput('releaseprefix');
@@ -74,22 +79,28 @@ function run() {
             bundles.push({
                 platform: 'ios',
                 bundlePath: iosBundlePath,
-                qrPath: iosQrPath
+                qrPath: iosQrPath,
+                assetsDest: iosAssetsDest,
+                publicPath: `${publicPathPerfix}${iosAssetsDest}`
             });
             // 3. android bundle params
             bundles.push({
                 platform: 'android',
                 bundlePath: androidBundlePath,
-                qrPath: androidQrPath
+                qrPath: androidQrPath,
+                iosAssetsDest: androidAssetsDest,
+                publicPath: `${publicPathPerfix}${androidAssetsDest}`
             });
             // 4. run build bundle
             for (const bundle of bundles) {
-                yield exec.exec(`yarn build:rn --reset-cache --platform ${bundle.platform}`);
-                const bundleUrl = `${prefix}${bundle.bundlePath}`;
+                const { platform, bundlePath, qrPath, assetsDest, publicPath } = bundle;
+                yield exec.exec(`yarn build:rn --reset-cache --platform ${platform} --bundle-output ${bundlePath} --assets-dest ${assetsDest} --publicPath ${publicPath}`);
+                yield exec.exec(`mv ${publicPath} ${assetsDest}`);
+                const bundleUrl = `${prefix}${bundlePath}`;
                 core.info(bundleUrl);
-                const qrText = `taro://releases?platform=${bundle.platform}&url=${encodeURIComponent(bundleUrl)}&name=${encodeURIComponent(appName)}&logo=${encodeURIComponent(logo)}`;
+                const qrText = `taro://releases?platform=${platform}&url=${encodeURIComponent(bundleUrl)}&name=${encodeURIComponent(appName)}&logo=${encodeURIComponent(logo)}`;
                 core.info(qrText);
-                genQr(qrText, bundle.qrPath);
+                genQr(qrText, qrPath);
             }
             // 5. git commit
             yield exec.exec(`git config --global user.name "${((_a = payload.pusher) === null || _a === void 0 ? void 0 : _a.name) || ((_b = payload.sender) === null || _b === void 0 ? void 0 : _b.login) || 'unknown Author'}"`);
