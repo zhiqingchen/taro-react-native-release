@@ -5,14 +5,18 @@ inputs:
   token:
     required: true
     description: 'github token'
-  publicpath:
-    required: false
-    description: 'asset public path'
-    default: 'https://cdn.jsdelivr.net/gh'
   refname:
     required: false
     description: 'ref name, tag or branch'
-  iosbundlepath:
+  cdnhost:
+    required: false
+    description: 'cdn host'
+    default: 'https://cdn.jsdelivr.net'
+  cdnpath:
+    required: false
+    description: 'cdn path'
+    default: '/gh'
+  iosbundleoutput:
     required: false
     description: 'ios bundle path'
     default: 'ios/main.js'
@@ -20,7 +24,11 @@ inputs:
     required: false
     description: 'ios qr path'
     default: 'release/qrcode/ios.png'
-  androidbundlepath:
+  iosassetsdest:
+    required: false
+    description: 'ios assets dest'
+    default: 'ios/assets'
+  androidbundleoutput:
     required: false
     description: 'android bundle path'
     default: 'android/main.js'
@@ -28,6 +36,10 @@ inputs:
     required: false
     description: 'android qr path'
     default: 'release/qrcode/android.png'
+  androidassetsdest:
+    required: false
+    description: 'android assets dest'
+    default: 'android/assets'
   appname:
     required: false
     description: 'app name'
