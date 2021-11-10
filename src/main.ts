@@ -5,6 +5,14 @@ import * as github from '@actions/github'
 import * as path from 'path'
 import QRCode from 'qrcode'
 
+interface BundleParama {
+  platform: string
+  bundlePath: string
+  qrPath: string
+  assetsDest: string
+  publicPath: string
+}
+
 export async function run(): Promise<void> {
   try {
     // 1. get params from workflow
@@ -35,7 +43,7 @@ export async function run(): Promise<void> {
     const refType = env['GITHUB_REF_TYPE']
 
     // 2. ios bundle params
-    const bundles = []
+    const bundles: BundleParama[] = []
     bundles.push({
       platform: 'ios',
       bundlePath: iosBundlePath,
@@ -49,14 +57,15 @@ export async function run(): Promise<void> {
       platform: 'android',
       bundlePath: androidBundlePath,
       qrPath: androidQrPath,
-      iosAssetsDest: androidAssetsDest,
+      assetsDest: androidAssetsDest,
       publicPath: `${publicPathPerfix}${androidAssetsDest}`
     })
 
     // 4. run build bundle
     for (const bundle of bundles) {
       const {platform, bundlePath, qrPath, assetsDest, publicPath} = bundle
-      await exec.exec(`yarn build:rn --reset-cache --platform ${platform} --bundle-output ${bundlePath} --assets-dest ${assetsDest} --publicPath ${publicPath}`)
+      const sourcemapparms = getSourceMapParams(platform)
+      await exec.exec(`yarn build:rn --reset-cache --platform ${platform} --bundle-output ${bundlePath} --assets-dest ${assetsDest} --publicPath ${publicPath} ${sourcemapparms}`)
       await exec.exec(`mv ${publicPath} ${assetsDest}`)
       const bundleUrl = `${prefix}${bundlePath}`
       core.info(bundleUrl)
@@ -103,6 +112,23 @@ export async function run(): Promise<void> {
   } catch (error: any) {
     core.setFailed(error)
   }
+}
+
+function getSourceMapParams(platform: string): string {
+  const result: string[] = []
+  const sourcemapOutput = core.getInput(`${platform}sourcemapoutput`)
+  const sourcemapUseAbsolutePath = core.getInput(`${platform}sourcemapuseabsolutepath`)
+  const sourcemapSourcesRoot = core.getInput(`${platform}sourcemapsourcesroot`)
+  if (sourcemapOutput) {
+    result.push(`--sourcemap-output ${sourcemapOutput}`)
+  }
+  if (sourcemapUseAbsolutePath) {
+    result.push(`--sourcemap-use-absolute-path ${sourcemapUseAbsolutePath}`)
+  }
+  if (sourcemapSourcesRoot) {
+    result.push(`--sourcemap-sources-root ${sourcemapSourcesRoot}`)
+  }
+  return result.join(' ')
 }
 
 function genQr(text: string, dist: string): void {

@@ -28,6 +28,18 @@ inputs:
     required: false
     description: 'ios assets dest'
     default: 'ios/assets'
+  iossourcemapoutput:
+    required: false
+    description: 'File name where to store the sourcemap file for resulting bundle'
+    default: 'ios/main.map'
+  iossourcemapuseabsolutepath:
+    required: false
+    description: 'Report SourceMapURL using its full path'
+    default: ''
+  iossourcemapsourcesroot:
+    required: false
+    description: 'Path to make sourcemaps sources entries relative to'
+    default: ''
   androidbundleoutput:
     required: false
     description: 'android bundle path'
@@ -40,6 +52,18 @@ inputs:
     required: false
     description: 'android assets dest'
     default: 'android/assets'
+  androidsourcemapoutput:
+    required: false
+    description: 'File name where to store the sourcemap file for resulting bundle'
+    default: 'android/main.map'
+  androidsourcemapuseabsolutepath:
+    required: false
+    description: 'Report SourceMapURL using its full path'
+    default: ''
+  androidsourcemapsourcesroot:
+    required: false
+    description: 'Path to make sourcemaps sources entries relative to'
+    default: ''
   appname:
     required: false
     description: 'app name'
