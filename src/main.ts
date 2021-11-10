@@ -88,11 +88,9 @@ export async function run(): Promise<void> {
       core.info(`open ${prefix}${androidQrPath}, and san to prview android release.`)
       core.info(`open ${prefix}${iosQrPath}, and san to prview ios release.`)
     }
-  } catch (error) {
-    core.info(`${typeof error} ${JSON.stringify(error)}`)
-    if (error instanceof SyntaxError) {
-      core.setFailed(error.message)
-    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    core.setFailed(error)
   }
 }
 

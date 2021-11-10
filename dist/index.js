@@ -123,12 +123,10 @@ function run() {
                 core.info(`open ${prefix}${androidQrPath}, and san to prview android release.`);
                 core.info(`open ${prefix}${iosQrPath}, and san to prview ios release.`);
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         }
         catch (error) {
-            core.info(`${typeof error} ${JSON.stringify(error)}`);
-            if (error instanceof SyntaxError) {
-                core.setFailed(error.message);
-            }
+            core.setFailed(error);
         }
     });
 }
