@@ -25,9 +25,13 @@ export async function run(): Promise<void> {
     const cdnhost = core.getInput('cdnhost')
     const cdnpath = core.getInput('cdnpath')
     const refname = (core.getInput('refname') || env['GITHUB_REF_NAME']) as string
+
     // like '/gh/zhiqingchen/Taro-Mortgage-Calculator@feat-remote-bundle/'
-    const publicPathPerfix = `${cdnpath}/${respository}@${refname}/`
-    const prefix = `${cdnhost}${publicPathPerfix}`
+    const publicPathPerfix = `${cdnpath}/${respository}/`
+
+    // like 'https://cdn.jsdelivr.net/gh/zhiqingchen/Taro-Mortgage-Calculator@v1.0.19/'
+    const prefix = `${cdnhost}${cdnpath}/${respository}@${refname}/`
+
     const iosBundlePath = core.getInput('iosbundleoutput')
     const iosQrPath = core.getInput('iosqrpath')
     const iosAssetsDest = core.getInput('iosassetsdest')
