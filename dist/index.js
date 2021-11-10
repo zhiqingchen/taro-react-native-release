@@ -46,6 +46,7 @@ const github = __importStar(__nccwpck_require__(5438));
 const path = __importStar(__nccwpck_require__(5622));
 const qrcode_1 = __importDefault(__nccwpck_require__(8726));
 function run() {
+    var _a, _b, _c;
     return __awaiter(this, void 0, void 0, function* () {
         try {
             // 1. get params from workflow
@@ -91,8 +92,8 @@ function run() {
                 genQr(qrText, bundle.qrPath);
             }
             // 5. git commit
-            yield exec.exec(`git config --global user.name "${payload.pusher.name}"`);
-            yield exec.exec(`git config --global user.email "${payload.pusher.email}"`);
+            yield exec.exec(`git config --global user.name "${((_a = payload.pusher) === null || _a === void 0 ? void 0 : _a.name) || ((_b = payload.sender) === null || _b === void 0 ? void 0 : _b.login) || 'unknown Author'}"`);
+            yield exec.exec(`git config --global user.email "${((_c = payload.pusher) === null || _c === void 0 ? void 0 : _c.email) || 'unknown@unknown.unknown'}"`);
             yield exec.exec(`git status`);
             yield exec.exec(`git add .`);
             yield exec.exec(`git commit -m "update by github actions"`);

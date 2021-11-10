@@ -55,8 +55,8 @@ export async function run(): Promise<void> {
     }
 
     // 5. git commit
-    await exec.exec(`git config --global user.name "${payload.pusher.name}"`)
-    await exec.exec(`git config --global user.email "${payload.pusher.email}"`)
+    await exec.exec(`git config --global user.name "${payload.pusher?.name || payload.sender?.login || 'unknown Author'}"`)
+    await exec.exec(`git config --global user.email "${payload.pusher?.email || 'unknown@unknown.unknown'}"`)
     await exec.exec(`git status`)
     await exec.exec(`git add .`)
     await exec.exec(`git commit -m "update by github actions"`)
