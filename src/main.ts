@@ -59,7 +59,7 @@ export async function run(): Promise<void> {
     await exec.exec(`git config --global user.email "${payload.pusher?.email || 'unknown@unknown.unknown'}"`)
     await exec.exec(`git status`)
     await exec.exec(`git add .`)
-    await exec.exec(`git commit -m "update by github actions"`)
+    await exec.exec(`git commit -m "release: commit by github actions"`)
 
     if (refType === 'tag') {
       // 6. reset tag
@@ -85,8 +85,8 @@ export async function run(): Promise<void> {
     } else if (refType === 'branch') {
       // 6. push branch
       await exec.exec(`git push origin`)
-      core.info(`open ${prefix}${androidQrPath}, and san to prview android release.`)
-      core.info(`open ${prefix}${iosQrPath}, and san to prview ios release.`)
+      core.info(`open ${prefix}${androidQrPath} , and use the Taro Playground Android APP to san for prview android release.`)
+      core.info(`open ${prefix}${iosQrPath} , and use the Taro Playground iOS APP to san for prview ios release.`)
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {

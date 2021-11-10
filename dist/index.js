@@ -96,7 +96,7 @@ function run() {
             yield exec.exec(`git config --global user.email "${((_c = payload.pusher) === null || _c === void 0 ? void 0 : _c.email) || 'unknown@unknown.unknown'}"`);
             yield exec.exec(`git status`);
             yield exec.exec(`git add .`);
-            yield exec.exec(`git commit -m "update by github actions"`);
+            yield exec.exec(`git commit -m "release: commit by github actions"`);
             if (refType === 'tag') {
                 // 6. reset tag
                 yield exec.exec(`git tag -d ${refname}`);
@@ -121,8 +121,8 @@ function run() {
             else if (refType === 'branch') {
                 // 6. push branch
                 yield exec.exec(`git push origin`);
-                core.info(`open ${prefix}${androidQrPath}, and san to prview android release.`);
-                core.info(`open ${prefix}${iosQrPath}, and san to prview ios release.`);
+                core.info(`open ${prefix}${androidQrPath} , and use the Taro Playground Android APP to san for prview android release.`);
+                core.info(`open ${prefix}${iosQrPath} , and use the Taro Playground iOS APP to san for prview ios release.`);
             }
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         }
