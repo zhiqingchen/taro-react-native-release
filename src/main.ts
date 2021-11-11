@@ -70,7 +70,7 @@ export async function run(): Promise<void> {
       await exec.exec(`yarn build:rn --reset-cache --platform ${platform} --bundle-output ${bundlePath} --assets-dest ${assetsDest} --publicPath ${publicPath} ${sourcemapparms}`)
       await exec.exec(`ls`)
       await exec.exec(`ls ${assetsDest}`)
-      await exec.exec(`cp -rf ${assetsDest}${publicPath}/* ${assetsDest}`)
+      await exec.exec(`cp -rf ${assetsDest}${publicPath}/ ${assetsDest}`)
       const bundleUrl = `${prefix}${bundlePath}`
       core.info(bundleUrl)
       const qrText = `taro://releases?platform=${platform}&url=${encodeURIComponent(bundleUrl)}&name=${encodeURIComponent(appName)}&logo=${encodeURIComponent(logo)}`
