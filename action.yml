@@ -3,7 +3,7 @@ description: 'Taro React Native Release'
 author: 'Tony Chen'
 branding:
   icon: 'package'  
-  color: '#6190e8'
+  color: 'blue'
 inputs:
   token:
     required: true
