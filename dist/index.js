@@ -96,13 +96,11 @@ function run() {
                 const { platform, bundlePath, qrPath, assetsDest, publicPath } = bundle;
                 const sourcemapparms = getSourceMapParams(platform);
                 yield exec.exec(`yarn build:rn --reset-cache --platform ${platform} --bundle-output ${bundlePath} --assets-dest ${assetsDest} --publicPath ${publicPath} ${sourcemapparms}`);
-                yield exec.exec(`ls`);
-                yield exec.exec(`ls ${assetsDest}`);
                 yield exec.exec(`cp -rf ${assetsDest}${publicPath}/ ${assetsDest}`);
                 const bundleUrl = `${prefix}${bundlePath}`;
-                core.info(bundleUrl);
+                core.info(`bundle url: ${bundleUrl}`);
                 const qrText = `taro://releases?platform=${platform}&url=${encodeURIComponent(bundleUrl)}&name=${encodeURIComponent(appName)}&logo=${encodeURIComponent(logo)}`;
-                core.info(qrText);
+                core.info(`qr text: ${qrText}`);
                 genQr(qrText, qrPath);
             }
             // 5. git commit

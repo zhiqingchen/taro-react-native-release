@@ -1,12 +1,56 @@
 # Github action for bundle taro react native project
 
-## Feature
+Use this action to package your [Taro React Native](https://docs.taro.zone/) project and generate bundles for Android and iOS. Others can use [Taro Playground APP](https://github.com/wuba/taro-playground) to load the bundle for project preview.
+
+Make it easier to share your ideas.
+
+**Note:** Your React Native version and dependencies must be compatible with the [Taro Playground APP](https://github.com/wuba/taro-playground/blob/main/package.json). 
+## Workflow
+
+1. Execute `yarn build:rn` to build the bundle.
+2. Generate a [Taro Playground APP](https://github.com/wuba/taro-playground) protocol, including platform, name, logo and bundle url.
+3. Export the protocol to a file with a QR code.
+4. Commit the changes.
+5. If `GITHUB_REF_NAME` is tag
+   1. Delete the original tag and re-tag it.
+   2. Generate a release, including the QR code and other information.
+6. If `GITHUB_REF_NAME` is branch
+   1. Push the changes to the branch.
 
 ## Usage
 
-```yml
+### Basic Config
 
+```yml
+on:
+  push:
+    tags: [ v* ]
+  workflow_dispatch:
+
+jobs:
+  taro_release_job:
+    runs-on: ubuntu-latest
+    name: Taro Bundle Release
+    steps:
+      - name: Release Taro React Native bundle
+        uses: zhiqingchen/taro-react-native-release@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          appname: Taro-Mortgage-calculator
+          logo: https://pic3.58cdn.com.cn/nowater/fangfe/n_v25b1523466b894881b9bdeda7618a8af2.png
 ```
+
+### Options
+
+see [action.yml](./action.yml) for details.
+
+### Examples
+
+0. [wuba/Taro-Mortgage-Calculator](https://github.com/wuba/Taro-Mortgage-Calculator/tree/master/.github/workflows/main.yml)
+
+## Acknowledgements
+
+We use [jsDelivr](https://www.jsdelivr.com/?docs=gh) as the cdn service.
 ## LICENSE
 
 The MIT License (MIT)
