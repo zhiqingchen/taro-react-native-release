@@ -97,7 +97,7 @@ function run() {
                 const { platform, bundlePath, qrPath, assetsDest, publicPath } = bundle;
                 const sourcemapparms = getSourceMapParams(platform);
                 yield exec.exec(`yarn build:rn --reset-cache --platform ${platform} --bundle-output ${bundlePath} --assets-dest ${assetsDest} --publicPath ${publicPath} ${sourcemapparms}`);
-                yield exec.exec(`mv ${publicPath} ${assetsDest}`);
+                yield exec.exec(`mv .${publicPath} ${assetsDest}`);
                 const bundleUrl = `${prefix}${bundlePath}`;
                 core.info(bundleUrl);
                 const qrText = `taro://releases?platform=${platform}&url=${encodeURIComponent(bundleUrl)}&name=${encodeURIComponent(appName)}&logo=${encodeURIComponent(logo)}`;
