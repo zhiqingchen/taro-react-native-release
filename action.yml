@@ -22,7 +22,7 @@ inputs:
   iosbundleoutput:
     required: false
     description: 'ios bundle path'
-    default: 'ios/main.js'
+    default: 'release/ios/main.js'
   iosqrpath:
     required: false
     description: 'ios qr path'
@@ -30,11 +30,11 @@ inputs:
   iosassetsdest:
     required: false
     description: 'ios assets dest'
-    default: 'ios/assets'
+    default: 'release/ios/assets'
   iossourcemapoutput:
     required: false
     description: 'File name where to store the sourcemap file for resulting bundle'
-    default: 'ios/main.map'
+    default: 'release/ios/main.map'
   iossourcemapuseabsolutepath:
     required: false
     description: 'Report SourceMapURL using its full path'
@@ -46,7 +46,7 @@ inputs:
   androidbundleoutput:
     required: false
     description: 'android bundle path'
-    default: 'android/main.js'
+    default: 'release/android/main.js'
   androidqrpath:
     required: false
     description: 'android qr path'
@@ -54,11 +54,11 @@ inputs:
   androidassetsdest:
     required: false
     description: 'android assets dest'
-    default: 'android/assets'
+    default: 'release/android/assets'
   androidsourcemapoutput:
     required: false
     description: 'File name where to store the sourcemap file for resulting bundle'
-    default: 'android/main.map'
+    default: 'release/android/main.map'
   androidsourcemapuseabsolutepath:
     required: false
     description: 'Report SourceMapURL using its full path'
