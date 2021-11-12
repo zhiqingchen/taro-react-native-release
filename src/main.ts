@@ -17,11 +17,11 @@ export async function run(): Promise<void> {
   try {
     // 1. get params from workflow
     const env = process.env
-    core.info(`env: ${JSON.stringify(env, undefined, 2)}`)
+    // core.info(`env: ${JSON.stringify(env, undefined, 2)}`)
     const respository = env['GITHUB_REPOSITORY'] as string
     const owner = env['GITHUB_REPOSITORY_OWNER'] as string
     const payload = github.context.payload
-    core.info(`payload: ${JSON.stringify(payload, undefined, 2)}`)
+    // core.info(`payload: ${JSON.stringify(payload, undefined, 2)}`)
     const cdnhost = core.getInput('cdnhost')
     const cdnpath = core.getInput('cdnpath')
     const refname = (core.getInput('refname') || env['GITHUB_REF_NAME']) as string
@@ -59,7 +59,7 @@ export async function run(): Promise<void> {
       bundlePath: androidBundlePath,
       qrPath: androidQrPath,
       assetsDest: androidAssetsDest,
-      publicPath: `${publicPathPerfix}${androidAssetsDest}`
+      publicPath: `${publicPathPerfix}${iosAssetsDest}` // use ios assets directly
     })
 
     // 4. run build bundle
@@ -68,7 +68,10 @@ export async function run(): Promise<void> {
       const {platform, bundlePath, qrPath, assetsDest, publicPath} = bundle
       const sourcemapparms = getSourceMapParams(platform)
       await exec.exec(`yarn build:rn --reset-cache --platform ${platform} --bundle-output ${bundlePath} --assets-dest ${assetsDest} --publicPath ${publicPath} ${sourcemapparms}`)
-      await exec.exec(`cp -rf ${assetsDest}${publicPath}/ ${assetsDest}`)
+      if (platform === 'ios') {
+        await exec.exec('cp', ['-rfv', `${assetsDest}${publicPath}`, `${assetsDest}/..`])
+        await exec.exec('rm', ['-rf', `${assetsDest}${publicPath}`])
+      }
       const bundleUrl = `${prefix}${bundlePath}`
       core.info(`bundle url: ${bundleUrl}`)
       const qrText = `taro://releases?platform=${platform}&url=${encodeURIComponent(bundleUrl)}&name=${encodeURIComponent(appName)}&logo=${encodeURIComponent(logo)}`

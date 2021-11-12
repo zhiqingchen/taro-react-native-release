@@ -51,11 +51,11 @@ function run() {
         try {
             // 1. get params from workflow
             const env = process.env;
-            core.info(`env: ${JSON.stringify(env, undefined, 2)}`);
+            // core.info(`env: ${JSON.stringify(env, undefined, 2)}`)
             const respository = env['GITHUB_REPOSITORY'];
             const owner = env['GITHUB_REPOSITORY_OWNER'];
             const payload = github.context.payload;
-            core.info(`payload: ${JSON.stringify(payload, undefined, 2)}`);
+            // core.info(`payload: ${JSON.stringify(payload, undefined, 2)}`)
             const cdnhost = core.getInput('cdnhost');
             const cdnpath = core.getInput('cdnpath');
             const refname = (core.getInput('refname') || env['GITHUB_REF_NAME']);
@@ -88,7 +88,7 @@ function run() {
                 bundlePath: androidBundlePath,
                 qrPath: androidQrPath,
                 assetsDest: androidAssetsDest,
-                publicPath: `${publicPathPerfix}${androidAssetsDest}`
+                publicPath: `${publicPathPerfix}${iosAssetsDest}` // use ios assets directly
             });
             // 4. run build bundle
             for (const bundle of bundles) {
@@ -96,7 +96,10 @@ function run() {
                 const { platform, bundlePath, qrPath, assetsDest, publicPath } = bundle;
                 const sourcemapparms = getSourceMapParams(platform);
                 yield exec.exec(`yarn build:rn --reset-cache --platform ${platform} --bundle-output ${bundlePath} --assets-dest ${assetsDest} --publicPath ${publicPath} ${sourcemapparms}`);
-                yield exec.exec(`cp -rf ${assetsDest}${publicPath}/ ${assetsDest}`);
+                if (platform === 'ios') {
+                    yield exec.exec('cp', ['-rfv', `${assetsDest}${publicPath}`, `${assetsDest}/..`]);
+                    yield exec.exec('rm', ['-rf', `${assetsDest}${publicPath}`]);
+                }
                 const bundleUrl = `${prefix}${bundlePath}`;
                 core.info(`bundle url: ${bundleUrl}`);
                 const qrText = `taro://releases?platform=${platform}&url=${encodeURIComponent(bundleUrl)}&name=${encodeURIComponent(appName)}&logo=${encodeURIComponent(logo)}`;
