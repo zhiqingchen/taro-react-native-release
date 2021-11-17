@@ -51,6 +51,7 @@ see [action.yml](./action.yml) for details.
 ### Examples
 
 0. [wuba/Taro-Mortgage-Calculator](https://github.com/wuba/Taro-Mortgage-Calculator/tree/master/.github/workflows/main.yml)
+1. [rick-and-morty-wiki](https://github.com/rick-and-morty-wiki/rick-and-morty-wiki/blob/master/.github/workflows/main.yml)
 
 ## Acknowledgements
 
