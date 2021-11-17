@@ -4,7 +4,11 @@ Use this action to package your [Taro React Native](https://docs.taro.zone/) pro
 
 Make it easier to share your ideas.
 
-**Note:** Your React Native version and dependencies must be compatible with the [Taro Playground APP](https://github.com/wuba/taro-playground/blob/main/package.json). 
+## Attention
+
+0. Your React Native version and dependencies must be compatible with the [Taro Playground APP](https://github.com/wuba/taro-playground/blob/main/package.json). 
+1. Taro version needs to be greater than or equal to 3.3.13.
+2. add `!release/**` to the `.gitignore` file.
 ## Workflow
 
 1. Execute `yarn build:rn` to build the bundle.
