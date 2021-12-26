@@ -54,6 +54,7 @@ function run() {
             // core.info(`env: ${JSON.stringify(env, undefined, 2)}`)
             const respository = env['GITHUB_REPOSITORY'];
             const owner = env['GITHUB_REPOSITORY_OWNER'];
+            const workspace = env['GITHUB_WORKSPACE'];
             const payload = github.context.payload;
             // core.info(`payload: ${JSON.stringify(payload, undefined, 2)}`)
             const cdnhost = core.getInput('cdnhost');
@@ -71,6 +72,7 @@ function run() {
             const logo = core.getInput('logo');
             const releaseprefix = core.getInput('releaseprefix');
             const token = core.getInput('token');
+            const workingdirectory = core.getInput('workingdirectory');
             const git = github.getOctokit(token);
             const refType = env['GITHUB_REF_TYPE'];
             // 2. ios bundle params
@@ -95,6 +97,7 @@ function run() {
                 core.info(`bundle: ${JSON.stringify(bundle, undefined, 2)}`);
                 const { platform, bundlePath, qrPath, assetsDest, publicPath } = bundle;
                 const sourcemapparms = getSourceMapParams(platform);
+                yield exec.exec(`cd ${workingdirectory}`);
                 yield exec.exec(`yarn build:rn --reset-cache --platform ${platform} --bundle-output ${bundlePath} --assets-dest ${assetsDest} --publicPath ${publicPath} ${sourcemapparms}`);
                 if (platform === 'ios') {
                     yield exec.exec('cp', ['-rfv', `${assetsDest}${publicPath}`, `${assetsDest}/..`]);
@@ -105,6 +108,7 @@ function run() {
                 const qrText = `taro://releases?platform=${platform}&url=${encodeURIComponent(bundleUrl)}&name=${encodeURIComponent(appName)}&logo=${encodeURIComponent(logo)}`;
                 core.info(`qr text: ${qrText}`);
                 genQr(qrText, qrPath);
+                yield exec.exec(`cd ${workspace}`);
             }
             // 5. git commit
             yield exec.exec(`git config --global user.name "${((_a = payload.pusher) === null || _a === void 0 ? void 0 : _a.name) || ((_b = payload.sender) === null || _b === void 0 ? void 0 : _b.login) || 'unknown Author'}"`);
