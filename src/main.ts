@@ -53,7 +53,7 @@ export async function run(): Promise<void> {
     bundles.push({
       platform: 'ios',
       bundlePath: iosBundlePath,
-      qrPath: iosQrPath,
+      qrPath: path.join(workingdirectory, iosQrPath),
       assetsDest: iosAssetsDest,
       publicPath: `${publicPathPerfix}${iosAssetsDest}`
     })
@@ -62,7 +62,7 @@ export async function run(): Promise<void> {
     bundles.push({
       platform: 'android',
       bundlePath: androidBundlePath,
-      qrPath: androidQrPath,
+      qrPath: path.join(workingdirectory, androidQrPath),
       assetsDest: androidAssetsDest,
       publicPath: `${publicPathPerfix}${iosAssetsDest}` // use ios assets directly
     })

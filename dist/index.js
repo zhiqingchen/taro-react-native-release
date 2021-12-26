@@ -82,7 +82,7 @@ function run() {
             bundles.push({
                 platform: 'ios',
                 bundlePath: iosBundlePath,
-                qrPath: iosQrPath,
+                qrPath: path.join(workingdirectory, iosQrPath),
                 assetsDest: iosAssetsDest,
                 publicPath: `${publicPathPerfix}${iosAssetsDest}`
             });
@@ -90,7 +90,7 @@ function run() {
             bundles.push({
                 platform: 'android',
                 bundlePath: androidBundlePath,
-                qrPath: androidQrPath,
+                qrPath: path.join(workingdirectory, androidQrPath),
                 assetsDest: androidAssetsDest,
                 publicPath: `${publicPathPerfix}${iosAssetsDest}` // use ios assets directly
             });
