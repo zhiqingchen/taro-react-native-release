@@ -44,6 +44,10 @@ export async function run(): Promise<void> {
 
     const refType = env['GITHUB_REF_TYPE']
 
+    const execOption = {
+      cwd: workingdirectory
+    }
+
     // 2. ios bundle params
     const bundles: BundleParama[] = []
     bundles.push({
@@ -68,10 +72,11 @@ export async function run(): Promise<void> {
       core.info(`bundle: ${JSON.stringify(bundle, undefined, 2)}`)
       const {platform, bundlePath, qrPath, assetsDest, publicPath} = bundle
       const sourcemapparms = getSourceMapParams(platform)
-      await exec.exec(`yarn build:rn --reset-cache --platform ${platform} --bundle-output ${bundlePath} --assets-dest ${assetsDest} --publicPath ${publicPath} ${sourcemapparms}`)
+      const buildcmd = `yarn build:rn --reset-cache --platform ${platform} --bundle-output ${bundlePath} --assets-dest ${assetsDest} --publicPath ${publicPath} ${sourcemapparms}`
+      await exec.exec(buildcmd, undefined, execOption)
       if (platform === 'ios') {
-        await exec.exec('cp', ['-rfv', `${assetsDest}${publicPath}`, `${assetsDest}/..`])
-        await exec.exec('rm', ['-rf', `${assetsDest}${publicPath}`])
+        await exec.exec('cp', ['-rfv', `${assetsDest}${publicPath}`, `${assetsDest}/..`], execOption)
+        await exec.exec('rm', ['-rf', `${assetsDest}${publicPath}`], execOption)
       }
       const bundleUrl = `${prefix}${bundlePath}`
       core.info(`bundle url: ${bundleUrl}`)
