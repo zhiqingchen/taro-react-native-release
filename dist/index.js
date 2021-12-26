@@ -97,7 +97,7 @@ function run() {
                 core.info(`bundle: ${JSON.stringify(bundle, undefined, 2)}`);
                 const { platform, bundlePath, qrPath, assetsDest, publicPath } = bundle;
                 const sourcemapparms = getSourceMapParams(platform);
-                yield exec.exec('cd', [workingdirectory]);
+                yield exec.exec('cd', [path.join(workspace, workingdirectory)]);
                 yield exec.exec(`yarn build:rn --reset-cache --platform ${platform} --bundle-output ${bundlePath} --assets-dest ${assetsDest} --publicPath ${publicPath} ${sourcemapparms}`);
                 if (platform === 'ios') {
                     yield exec.exec('cp', ['-rfv', `${assetsDest}${publicPath}`, `${assetsDest}/..`]);

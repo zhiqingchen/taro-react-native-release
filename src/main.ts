@@ -69,7 +69,7 @@ export async function run(): Promise<void> {
       core.info(`bundle: ${JSON.stringify(bundle, undefined, 2)}`)
       const {platform, bundlePath, qrPath, assetsDest, publicPath} = bundle
       const sourcemapparms = getSourceMapParams(platform)
-      await exec.exec('cd', [workingdirectory])
+      await exec.exec('cd', [path.join(workspace, workingdirectory)])
       await exec.exec(`yarn build:rn --reset-cache --platform ${platform} --bundle-output ${bundlePath} --assets-dest ${assetsDest} --publicPath ${publicPath} ${sourcemapparms}`)
       if (platform === 'ios') {
         await exec.exec('cp', ['-rfv', `${assetsDest}${publicPath}`, `${assetsDest}/..`])
