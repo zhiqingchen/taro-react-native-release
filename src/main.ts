@@ -26,8 +26,9 @@ export async function run(): Promise<void> {
     const cdnhost = core.getInput('cdnhost')
     const cdnpath = core.getInput('cdnpath')
     const refname = (core.getInput('refname') || env['GITHUB_REF_NAME']) as string
+    const workingdirectory = core.getInput('workingdirectory')
 
-    const publicPathPerfix = `${cdnpath}/${respository}@${refname}/`
+    const publicPathPerfix = path.join(`${cdnpath}/${respository}@${refname}/`, workingdirectory, '/')
     const prefix = `${cdnhost}${publicPathPerfix}`
 
     const iosBundlePath = core.getInput('iosbundleoutput')
@@ -40,7 +41,6 @@ export async function run(): Promise<void> {
     const logo = core.getInput('logo')
     const releaseprefix = core.getInput('releaseprefix')
     const token = core.getInput('token')
-    const workingdirectory = core.getInput('workingdirectory')
     const git = github.getOctokit(token)
 
     const refType = env['GITHUB_REF_TYPE']
@@ -69,7 +69,7 @@ export async function run(): Promise<void> {
       core.info(`bundle: ${JSON.stringify(bundle, undefined, 2)}`)
       const {platform, bundlePath, qrPath, assetsDest, publicPath} = bundle
       const sourcemapparms = getSourceMapParams(platform)
-      await exec.exec(`cd ${workingdirectory}`)
+      await exec.exec('cd', [workingdirectory])
       await exec.exec(`yarn build:rn --reset-cache --platform ${platform} --bundle-output ${bundlePath} --assets-dest ${assetsDest} --publicPath ${publicPath} ${sourcemapparms}`)
       if (platform === 'ios') {
         await exec.exec('cp', ['-rfv', `${assetsDest}${publicPath}`, `${assetsDest}/..`])
@@ -80,7 +80,7 @@ export async function run(): Promise<void> {
       const qrText = `taro://releases?platform=${platform}&url=${encodeURIComponent(bundleUrl)}&name=${encodeURIComponent(appName)}&logo=${encodeURIComponent(logo)}`
       core.info(`qr text: ${qrText}`)
       genQr(qrText, qrPath)
-      await exec.exec(`cd ${workspace}`)
+      await exec.exec('cd', [workspace])
     }
 
     // 5. git commit
