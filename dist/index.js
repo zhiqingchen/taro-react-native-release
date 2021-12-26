@@ -59,7 +59,8 @@ function run() {
             const cdnhost = core.getInput('cdnhost');
             const cdnpath = core.getInput('cdnpath');
             const refname = (core.getInput('refname') || env['GITHUB_REF_NAME']);
-            const publicPathPerfix = `${cdnpath}/${respository}@${refname}/`;
+            const workingdirectory = core.getInput('workingdirectory');
+            const publicPathPerfix = path.join(`${cdnpath}/${respository}@${refname}`, workingdirectory, '/');
             const prefix = `${cdnhost}${publicPathPerfix}`;
             const iosBundlePath = core.getInput('iosbundleoutput');
             const iosQrPath = core.getInput('iosqrpath');
@@ -73,12 +74,15 @@ function run() {
             const token = core.getInput('token');
             const git = github.getOctokit(token);
             const refType = env['GITHUB_REF_TYPE'];
+            const execOption = {
+                cwd: workingdirectory
+            };
             // 2. ios bundle params
             const bundles = [];
             bundles.push({
                 platform: 'ios',
                 bundlePath: iosBundlePath,
-                qrPath: iosQrPath,
+                qrPath: path.join(workingdirectory, iosQrPath),
                 assetsDest: iosAssetsDest,
                 publicPath: `${publicPathPerfix}${iosAssetsDest}`
             });
@@ -86,7 +90,7 @@ function run() {
             bundles.push({
                 platform: 'android',
                 bundlePath: androidBundlePath,
-                qrPath: androidQrPath,
+                qrPath: path.join(workingdirectory, androidQrPath),
                 assetsDest: androidAssetsDest,
                 publicPath: `${publicPathPerfix}${iosAssetsDest}` // use ios assets directly
             });
@@ -95,10 +99,11 @@ function run() {
                 core.info(`bundle: ${JSON.stringify(bundle, undefined, 2)}`);
                 const { platform, bundlePath, qrPath, assetsDest, publicPath } = bundle;
                 const sourcemapparms = getSourceMapParams(platform);
-                yield exec.exec(`yarn build:rn --reset-cache --platform ${platform} --bundle-output ${bundlePath} --assets-dest ${assetsDest} --publicPath ${publicPath} ${sourcemapparms}`);
+                const buildcmd = `yarn build:rn --reset-cache --platform ${platform} --bundle-output ${bundlePath} --assets-dest ${assetsDest} --publicPath ${publicPath} ${sourcemapparms}`;
+                yield exec.exec(buildcmd, undefined, execOption);
                 if (platform === 'ios') {
-                    yield exec.exec('cp', ['-rfv', `${assetsDest}${publicPath}`, `${assetsDest}/..`]);
-                    yield exec.exec('rm', ['-rf', `${assetsDest}${publicPath}`]);
+                    yield exec.exec('cp', ['-rfv', `${assetsDest}${publicPath}`, `${assetsDest}/..`], execOption);
+                    yield exec.exec('rm', ['-rf', `${assetsDest}${publicPath}`], execOption);
                 }
                 const bundleUrl = `${prefix}${bundlePath}`;
                 core.info(`bundle url: ${bundleUrl}`);
