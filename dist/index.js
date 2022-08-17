@@ -8,7 +8,11 @@ require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -323,6 +327,7 @@ const file_command_1 = __nccwpck_require__(717);
 const utils_1 = __nccwpck_require__(5278);
 const os = __importStar(__nccwpck_require__(2037));
 const path = __importStar(__nccwpck_require__(1017));
+const uuid_1 = __nccwpck_require__(5840);
 const oidc_utils_1 = __nccwpck_require__(8041);
 /**
  * The code to exit an action
@@ -352,7 +357,14 @@ function exportVariable(name, val) {
     process.env[name] = convertedVal;
     const filePath = process.env['GITHUB_ENV'] || '';
     if (filePath) {
-        const delimiter = '_GitHubActionsFileCommandDelimeter_';
+        const delimiter = `ghadelimiter_${uuid_1.v4()}`;
+        // These should realistically never happen, but just in case someone finds a way to exploit uuid generation let's not allow keys or values that contain the delimiter.
+        if (name.includes(delimiter)) {
+            throw new Error(`Unexpected input: name should not contain the delimiter "${delimiter}"`);
+        }
+        if (convertedVal.includes(delimiter)) {
+            throw new Error(`Unexpected input: value should not contain the delimiter "${delimiter}"`);
+        }
         const commandValue = `${name}<<${delimiter}${os.EOL}${convertedVal}${os.EOL}${delimiter}`;
         file_command_1.issueCommand('ENV', commandValue);
     }
@@ -598,6 +610,23 @@ function getIDToken(aud) {
     });
 }
 exports.getIDToken = getIDToken;
+/**
+ * Summary exports
+ */
+var summary_1 = __nccwpck_require__(1327);
+Object.defineProperty(exports, "summary", ({ enumerable: true, get: function () { return summary_1.summary; } }));
+/**
+ * @deprecated use core.summary
+ */
+var summary_2 = __nccwpck_require__(1327);
+Object.defineProperty(exports, "markdownSummary", ({ enumerable: true, get: function () { return summary_2.markdownSummary; } }));
+/**
+ * Path exports
+ */
+var path_utils_1 = __nccwpck_require__(2981);
+Object.defineProperty(exports, "toPosixPath", ({ enumerable: true, get: function () { return path_utils_1.toPosixPath; } }));
+Object.defineProperty(exports, "toWin32Path", ({ enumerable: true, get: function () { return path_utils_1.toWin32Path; } }));
+Object.defineProperty(exports, "toPlatformPath", ({ enumerable: true, get: function () { return path_utils_1.toPlatformPath; } }));
 //# sourceMappingURL=core.js.map
 
 /***/ }),
@@ -667,8 +696,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.OidcClient = void 0;
-const http_client_1 = __nccwpck_require__(9925);
-const auth_1 = __nccwpck_require__(3702);
+const http_client_1 = __nccwpck_require__(6255);
+const auth_1 = __nccwpck_require__(5526);
 const core_1 = __nccwpck_require__(2186);
 class OidcClient {
     static createHttpClient(allowRetry = true, maxRetry = 10) {
@@ -732,6 +761,361 @@ class OidcClient {
 }
 exports.OidcClient = OidcClient;
 //# sourceMappingURL=oidc-utils.js.map
+
+/***/ }),
+
+/***/ 2981:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.toPlatformPath = exports.toWin32Path = exports.toPosixPath = void 0;
+const path = __importStar(__nccwpck_require__(1017));
+/**
+ * toPosixPath converts the given path to the posix form. On Windows, \\ will be
+ * replaced with /.
+ *
+ * @param pth. Path to transform.
+ * @return string Posix path.
+ */
+function toPosixPath(pth) {
+    return pth.replace(/[\\]/g, '/');
+}
+exports.toPosixPath = toPosixPath;
+/**
+ * toWin32Path converts the given path to the win32 form. On Linux, / will be
+ * replaced with \\.
+ *
+ * @param pth. Path to transform.
+ * @return string Win32 path.
+ */
+function toWin32Path(pth) {
+    return pth.replace(/[/]/g, '\\');
+}
+exports.toWin32Path = toWin32Path;
+/**
+ * toPlatformPath converts the given path to a platform-specific path. It does
+ * this by replacing instances of / and \ with the platform-specific path
+ * separator.
+ *
+ * @param pth The path to platformize.
+ * @return string The platform-specific path.
+ */
+function toPlatformPath(pth) {
+    return pth.replace(/[/\\]/g, path.sep);
+}
+exports.toPlatformPath = toPlatformPath;
+//# sourceMappingURL=path-utils.js.map
+
+/***/ }),
+
+/***/ 1327:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.summary = exports.markdownSummary = exports.SUMMARY_DOCS_URL = exports.SUMMARY_ENV_VAR = void 0;
+const os_1 = __nccwpck_require__(2037);
+const fs_1 = __nccwpck_require__(7147);
+const { access, appendFile, writeFile } = fs_1.promises;
+exports.SUMMARY_ENV_VAR = 'GITHUB_STEP_SUMMARY';
+exports.SUMMARY_DOCS_URL = 'https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-job-summary';
+class Summary {
+    constructor() {
+        this._buffer = '';
+    }
+    /**
+     * Finds the summary file path from the environment, rejects if env var is not found or file does not exist
+     * Also checks r/w permissions.
+     *
+     * @returns step summary file path
+     */
+    filePath() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this._filePath) {
+                return this._filePath;
+            }
+            const pathFromEnv = process.env[exports.SUMMARY_ENV_VAR];
+            if (!pathFromEnv) {
+                throw new Error(`Unable to find environment variable for $${exports.SUMMARY_ENV_VAR}. Check if your runtime environment supports job summaries.`);
+            }
+            try {
+                yield access(pathFromEnv, fs_1.constants.R_OK | fs_1.constants.W_OK);
+            }
+            catch (_a) {
+                throw new Error(`Unable to access summary file: '${pathFromEnv}'. Check if the file has correct read/write permissions.`);
+            }
+            this._filePath = pathFromEnv;
+            return this._filePath;
+        });
+    }
+    /**
+     * Wraps content in an HTML tag, adding any HTML attributes
+     *
+     * @param {string} tag HTML tag to wrap
+     * @param {string | null} content content within the tag
+     * @param {[attribute: string]: string} attrs key-value list of HTML attributes to add
+     *
+     * @returns {string} content wrapped in HTML element
+     */
+    wrap(tag, content, attrs = {}) {
+        const htmlAttrs = Object.entries(attrs)
+            .map(([key, value]) => ` ${key}="${value}"`)
+            .join('');
+        if (!content) {
+            return `<${tag}${htmlAttrs}>`;
+        }
+        return `<${tag}${htmlAttrs}>${content}</${tag}>`;
+    }
+    /**
+     * Writes text in the buffer to the summary buffer file and empties buffer. Will append by default.
+     *
+     * @param {SummaryWriteOptions} [options] (optional) options for write operation
+     *
+     * @returns {Promise<Summary>} summary instance
+     */
+    write(options) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const overwrite = !!(options === null || options === void 0 ? void 0 : options.overwrite);
+            const filePath = yield this.filePath();
+            const writeFunc = overwrite ? writeFile : appendFile;
+            yield writeFunc(filePath, this._buffer, { encoding: 'utf8' });
+            return this.emptyBuffer();
+        });
+    }
+    /**
+     * Clears the summary buffer and wipes the summary file
+     *
+     * @returns {Summary} summary instance
+     */
+    clear() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.emptyBuffer().write({ overwrite: true });
+        });
+    }
+    /**
+     * Returns the current summary buffer as a string
+     *
+     * @returns {string} string of summary buffer
+     */
+    stringify() {
+        return this._buffer;
+    }
+    /**
+     * If the summary buffer is empty
+     *
+     * @returns {boolen} true if the buffer is empty
+     */
+    isEmptyBuffer() {
+        return this._buffer.length === 0;
+    }
+    /**
+     * Resets the summary buffer without writing to summary file
+     *
+     * @returns {Summary} summary instance
+     */
+    emptyBuffer() {
+        this._buffer = '';
+        return this;
+    }
+    /**
+     * Adds raw text to the summary buffer
+     *
+     * @param {string} text content to add
+     * @param {boolean} [addEOL=false] (optional) append an EOL to the raw text (default: false)
+     *
+     * @returns {Summary} summary instance
+     */
+    addRaw(text, addEOL = false) {
+        this._buffer += text;
+        return addEOL ? this.addEOL() : this;
+    }
+    /**
+     * Adds the operating system-specific end-of-line marker to the buffer
+     *
+     * @returns {Summary} summary instance
+     */
+    addEOL() {
+        return this.addRaw(os_1.EOL);
+    }
+    /**
+     * Adds an HTML codeblock to the summary buffer
+     *
+     * @param {string} code content to render within fenced code block
+     * @param {string} lang (optional) language to syntax highlight code
+     *
+     * @returns {Summary} summary instance
+     */
+    addCodeBlock(code, lang) {
+        const attrs = Object.assign({}, (lang && { lang }));
+        const element = this.wrap('pre', this.wrap('code', code), attrs);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML list to the summary buffer
+     *
+     * @param {string[]} items list of items to render
+     * @param {boolean} [ordered=false] (optional) if the rendered list should be ordered or not (default: false)
+     *
+     * @returns {Summary} summary instance
+     */
+    addList(items, ordered = false) {
+        const tag = ordered ? 'ol' : 'ul';
+        const listItems = items.map(item => this.wrap('li', item)).join('');
+        const element = this.wrap(tag, listItems);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML table to the summary buffer
+     *
+     * @param {SummaryTableCell[]} rows table rows
+     *
+     * @returns {Summary} summary instance
+     */
+    addTable(rows) {
+        const tableBody = rows
+            .map(row => {
+            const cells = row
+                .map(cell => {
+                if (typeof cell === 'string') {
+                    return this.wrap('td', cell);
+                }
+                const { header, data, colspan, rowspan } = cell;
+                const tag = header ? 'th' : 'td';
+                const attrs = Object.assign(Object.assign({}, (colspan && { colspan })), (rowspan && { rowspan }));
+                return this.wrap(tag, data, attrs);
+            })
+                .join('');
+            return this.wrap('tr', cells);
+        })
+            .join('');
+        const element = this.wrap('table', tableBody);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds a collapsable HTML details element to the summary buffer
+     *
+     * @param {string} label text for the closed state
+     * @param {string} content collapsable content
+     *
+     * @returns {Summary} summary instance
+     */
+    addDetails(label, content) {
+        const element = this.wrap('details', this.wrap('summary', label) + content);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML image tag to the summary buffer
+     *
+     * @param {string} src path to the image you to embed
+     * @param {string} alt text description of the image
+     * @param {SummaryImageOptions} options (optional) addition image attributes
+     *
+     * @returns {Summary} summary instance
+     */
+    addImage(src, alt, options) {
+        const { width, height } = options || {};
+        const attrs = Object.assign(Object.assign({}, (width && { width })), (height && { height }));
+        const element = this.wrap('img', null, Object.assign({ src, alt }, attrs));
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML section heading element
+     *
+     * @param {string} text heading text
+     * @param {number | string} [level=1] (optional) the heading level, default: 1
+     *
+     * @returns {Summary} summary instance
+     */
+    addHeading(text, level) {
+        const tag = `h${level}`;
+        const allowedTag = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag)
+            ? tag
+            : 'h1';
+        const element = this.wrap(allowedTag, text);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML thematic break (<hr>) to the summary buffer
+     *
+     * @returns {Summary} summary instance
+     */
+    addSeparator() {
+        const element = this.wrap('hr', null);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML line break (<br>) to the summary buffer
+     *
+     * @returns {Summary} summary instance
+     */
+    addBreak() {
+        const element = this.wrap('br', null);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML blockquote to the summary buffer
+     *
+     * @param {string} text quote text
+     * @param {string} cite (optional) citation url
+     *
+     * @returns {Summary} summary instance
+     */
+    addQuote(text, cite) {
+        const attrs = Object.assign({}, (cite && { cite }));
+        const element = this.wrap('blockquote', text, attrs);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML anchor tag to the summary buffer
+     *
+     * @param {string} text link text/content
+     * @param {string} href hyperlink
+     *
+     * @returns {Summary} summary instance
+     */
+    addLink(text, href) {
+        const element = this.wrap('a', text, { href });
+        return this.addRaw(element).addEOL();
+    }
+}
+const _summary = new Summary();
+/**
+ * @deprecated use `core.summary`
+ */
+exports.markdownSummary = _summary;
+exports.summary = _summary;
+//# sourceMappingURL=summary.js.map
 
 /***/ }),
 
@@ -1647,7 +2031,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getApiBaseUrl = exports.getProxyAgent = exports.getAuthString = void 0;
-const httpClient = __importStar(__nccwpck_require__(9925));
+const httpClient = __importStar(__nccwpck_require__(6255));
 function getAuthString(token, options) {
     if (!token && !options.auth) {
         throw new Error('Parameter token or opts.auth is required');
@@ -1732,28 +2116,41 @@ exports.getOctokitOptions = getOctokitOptions;
 
 /***/ }),
 
-/***/ 3702:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ 5526:
+/***/ (function(__unused_webpack_module, exports) {
 
 "use strict";
 
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PersonalAccessTokenCredentialHandler = exports.BearerCredentialHandler = exports.BasicCredentialHandler = void 0;
 class BasicCredentialHandler {
     constructor(username, password) {
         this.username = username;
         this.password = password;
     }
     prepareRequest(options) {
-        options.headers['Authorization'] =
-            'Basic ' +
-                Buffer.from(this.username + ':' + this.password).toString('base64');
+        if (!options.headers) {
+            throw Error('The request has no headers');
+        }
+        options.headers['Authorization'] = `Basic ${Buffer.from(`${this.username}:${this.password}`).toString('base64')}`;
     }
     // This handler cannot handle 401
-    canHandleAuthentication(response) {
+    canHandleAuthentication() {
         return false;
     }
-    handleAuthentication(httpClient, requestInfo, objs) {
-        return null;
+    handleAuthentication() {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error('not implemented');
+        });
     }
 }
 exports.BasicCredentialHandler = BasicCredentialHandler;
@@ -1764,14 +2161,19 @@ class BearerCredentialHandler {
     // currently implements pre-authorization
     // TODO: support preAuth = false where it hooks on 401
     prepareRequest(options) {
-        options.headers['Authorization'] = 'Bearer ' + this.token;
+        if (!options.headers) {
+            throw Error('The request has no headers');
+        }
+        options.headers['Authorization'] = `Bearer ${this.token}`;
     }
     // This handler cannot handle 401
-    canHandleAuthentication(response) {
+    canHandleAuthentication() {
         return false;
     }
-    handleAuthentication(httpClient, requestInfo, objs) {
-        return null;
+    handleAuthentication() {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error('not implemented');
+        });
     }
 }
 exports.BearerCredentialHandler = BearerCredentialHandler;
@@ -1782,32 +2184,66 @@ class PersonalAccessTokenCredentialHandler {
     // currently implements pre-authorization
     // TODO: support preAuth = false where it hooks on 401
     prepareRequest(options) {
-        options.headers['Authorization'] =
-            'Basic ' + Buffer.from('PAT:' + this.token).toString('base64');
+        if (!options.headers) {
+            throw Error('The request has no headers');
+        }
+        options.headers['Authorization'] = `Basic ${Buffer.from(`PAT:${this.token}`).toString('base64')}`;
     }
     // This handler cannot handle 401
-    canHandleAuthentication(response) {
+    canHandleAuthentication() {
         return false;
     }
-    handleAuthentication(httpClient, requestInfo, objs) {
-        return null;
+    handleAuthentication() {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error('not implemented');
+        });
     }
 }
 exports.PersonalAccessTokenCredentialHandler = PersonalAccessTokenCredentialHandler;
-
+//# sourceMappingURL=auth.js.map
 
 /***/ }),
 
-/***/ 9925:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ 6255:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const http = __nccwpck_require__(3685);
-const https = __nccwpck_require__(5687);
-const pm = __nccwpck_require__(6443);
-let tunnel;
+exports.HttpClient = exports.isHttps = exports.HttpClientResponse = exports.HttpClientError = exports.getProxyUrl = exports.MediaTypes = exports.Headers = exports.HttpCodes = void 0;
+const http = __importStar(__nccwpck_require__(3685));
+const https = __importStar(__nccwpck_require__(5687));
+const pm = __importStar(__nccwpck_require__(9835));
+const tunnel = __importStar(__nccwpck_require__(4294));
 var HttpCodes;
 (function (HttpCodes) {
     HttpCodes[HttpCodes["OK"] = 200] = "OK";
@@ -1852,7 +2288,7 @@ var MediaTypes;
  * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
  */
 function getProxyUrl(serverUrl) {
-    let proxyUrl = pm.getProxyUrl(new URL(serverUrl));
+    const proxyUrl = pm.getProxyUrl(new URL(serverUrl));
     return proxyUrl ? proxyUrl.href : '';
 }
 exports.getProxyUrl = getProxyUrl;
@@ -1885,20 +2321,22 @@ class HttpClientResponse {
         this.message = message;
     }
     readBody() {
-        return new Promise(async (resolve, reject) => {
-            let output = Buffer.alloc(0);
-            this.message.on('data', (chunk) => {
-                output = Buffer.concat([output, chunk]);
-            });
-            this.message.on('end', () => {
-                resolve(output.toString());
-            });
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
+                let output = Buffer.alloc(0);
+                this.message.on('data', (chunk) => {
+                    output = Buffer.concat([output, chunk]);
+                });
+                this.message.on('end', () => {
+                    resolve(output.toString());
+                });
+            }));
         });
     }
 }
 exports.HttpClientResponse = HttpClientResponse;
 function isHttps(requestUrl) {
-    let parsedUrl = new URL(requestUrl);
+    const parsedUrl = new URL(requestUrl);
     return parsedUrl.protocol === 'https:';
 }
 exports.isHttps = isHttps;
@@ -1941,141 +2379,169 @@ class HttpClient {
         }
     }
     options(requestUrl, additionalHeaders) {
-        return this.request('OPTIONS', requestUrl, null, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('OPTIONS', requestUrl, null, additionalHeaders || {});
+        });
     }
     get(requestUrl, additionalHeaders) {
-        return this.request('GET', requestUrl, null, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('GET', requestUrl, null, additionalHeaders || {});
+        });
     }
     del(requestUrl, additionalHeaders) {
-        return this.request('DELETE', requestUrl, null, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('DELETE', requestUrl, null, additionalHeaders || {});
+        });
     }
     post(requestUrl, data, additionalHeaders) {
-        return this.request('POST', requestUrl, data, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('POST', requestUrl, data, additionalHeaders || {});
+        });
     }
     patch(requestUrl, data, additionalHeaders) {
-        return this.request('PATCH', requestUrl, data, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('PATCH', requestUrl, data, additionalHeaders || {});
+        });
     }
     put(requestUrl, data, additionalHeaders) {
-        return this.request('PUT', requestUrl, data, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('PUT', requestUrl, data, additionalHeaders || {});
+        });
     }
     head(requestUrl, additionalHeaders) {
-        return this.request('HEAD', requestUrl, null, additionalHeaders || {});
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('HEAD', requestUrl, null, additionalHeaders || {});
+        });
     }
     sendStream(verb, requestUrl, stream, additionalHeaders) {
-        return this.request(verb, requestUrl, stream, additionalHeaders);
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request(verb, requestUrl, stream, additionalHeaders);
+        });
     }
     /**
      * Gets a typed object from an endpoint
      * Be aware that not found returns a null.  Other errors (4xx, 5xx) reject the promise
      */
-    async getJson(requestUrl, additionalHeaders = {}) {
-        additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
-        let res = await this.get(requestUrl, additionalHeaders);
-        return this._processResponse(res, this.requestOptions);
+    getJson(requestUrl, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            const res = yield this.get(requestUrl, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
     }
-    async postJson(requestUrl, obj, additionalHeaders = {}) {
-        let data = JSON.stringify(obj, null, 2);
-        additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
-        additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
-        let res = await this.post(requestUrl, data, additionalHeaders);
-        return this._processResponse(res, this.requestOptions);
+    postJson(requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const data = JSON.stringify(obj, null, 2);
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
+            const res = yield this.post(requestUrl, data, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
     }
-    async putJson(requestUrl, obj, additionalHeaders = {}) {
-        let data = JSON.stringify(obj, null, 2);
-        additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
-        additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
-        let res = await this.put(requestUrl, data, additionalHeaders);
-        return this._processResponse(res, this.requestOptions);
+    putJson(requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const data = JSON.stringify(obj, null, 2);
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
+            const res = yield this.put(requestUrl, data, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
     }
-    async patchJson(requestUrl, obj, additionalHeaders = {}) {
-        let data = JSON.stringify(obj, null, 2);
-        additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
-        additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
-        let res = await this.patch(requestUrl, data, additionalHeaders);
-        return this._processResponse(res, this.requestOptions);
+    patchJson(requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const data = JSON.stringify(obj, null, 2);
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
+            const res = yield this.patch(requestUrl, data, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
     }
     /**
      * Makes a raw http request.
      * All other methods such as get, post, patch, and request ultimately call this.
      * Prefer get, del, post and patch
      */
-    async request(verb, requestUrl, data, headers) {
-        if (this._disposed) {
-            throw new Error('Client has already been disposed.');
-        }
-        let parsedUrl = new URL(requestUrl);
-        let info = this._prepareRequest(verb, parsedUrl, headers);
-        // Only perform retries on reads since writes may not be idempotent.
-        let maxTries = this._allowRetries && RetryableHttpVerbs.indexOf(verb) != -1
-            ? this._maxRetries + 1
-            : 1;
-        let numTries = 0;
-        let response;
-        while (numTries < maxTries) {
-            response = await this.requestRaw(info, data);
-            // Check if it's an authentication challenge
-            if (response &&
-                response.message &&
-                response.message.statusCode === HttpCodes.Unauthorized) {
-                let authenticationHandler;
-                for (let i = 0; i < this.handlers.length; i++) {
-                    if (this.handlers[i].canHandleAuthentication(response)) {
-                        authenticationHandler = this.handlers[i];
-                        break;
-                    }
-                }
-                if (authenticationHandler) {
-                    return authenticationHandler.handleAuthentication(this, info, data);
-                }
-                else {
-                    // We have received an unauthorized response but have no handlers to handle it.
-                    // Let the response return to the caller.
-                    return response;
-                }
+    request(verb, requestUrl, data, headers) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this._disposed) {
+                throw new Error('Client has already been disposed.');
             }
-            let redirectsRemaining = this._maxRedirects;
-            while (HttpRedirectCodes.indexOf(response.message.statusCode) != -1 &&
-                this._allowRedirects &&
-                redirectsRemaining > 0) {
-                const redirectUrl = response.message.headers['location'];
-                if (!redirectUrl) {
-                    // if there's no location to redirect to, we won't
-                    break;
-                }
-                let parsedRedirectUrl = new URL(redirectUrl);
-                if (parsedUrl.protocol == 'https:' &&
-                    parsedUrl.protocol != parsedRedirectUrl.protocol &&
-                    !this._allowRedirectDowngrade) {
-                    throw new Error('Redirect from HTTPS to HTTP protocol. This downgrade is not allowed for security reasons. If you want to allow this behavior, set the allowRedirectDowngrade option to true.');
-                }
-                // we need to finish reading the response before reassigning response
-                // which will leak the open socket.
-                await response.readBody();
-                // strip authorization header if redirected to a different hostname
-                if (parsedRedirectUrl.hostname !== parsedUrl.hostname) {
-                    for (let header in headers) {
-                        // header names are case insensitive
-                        if (header.toLowerCase() === 'authorization') {
-                            delete headers[header];
+            const parsedUrl = new URL(requestUrl);
+            let info = this._prepareRequest(verb, parsedUrl, headers);
+            // Only perform retries on reads since writes may not be idempotent.
+            const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb)
+                ? this._maxRetries + 1
+                : 1;
+            let numTries = 0;
+            let response;
+            do {
+                response = yield this.requestRaw(info, data);
+                // Check if it's an authentication challenge
+                if (response &&
+                    response.message &&
+                    response.message.statusCode === HttpCodes.Unauthorized) {
+                    let authenticationHandler;
+                    for (const handler of this.handlers) {
+                        if (handler.canHandleAuthentication(response)) {
+                            authenticationHandler = handler;
+                            break;
                         }
                     }
+                    if (authenticationHandler) {
+                        return authenticationHandler.handleAuthentication(this, info, data);
+                    }
+                    else {
+                        // We have received an unauthorized response but have no handlers to handle it.
+                        // Let the response return to the caller.
+                        return response;
+                    }
                 }
-                // let's make the request with the new redirectUrl
-                info = this._prepareRequest(verb, parsedRedirectUrl, headers);
-                response = await this.requestRaw(info, data);
-                redirectsRemaining--;
-            }
-            if (HttpResponseRetryCodes.indexOf(response.message.statusCode) == -1) {
-                // If not a retry code, return immediately instead of retrying
-                return response;
-            }
-            numTries += 1;
-            if (numTries < maxTries) {
-                await response.readBody();
-                await this._performExponentialBackoff(numTries);
-            }
-        }
-        return response;
+                let redirectsRemaining = this._maxRedirects;
+                while (response.message.statusCode &&
+                    HttpRedirectCodes.includes(response.message.statusCode) &&
+                    this._allowRedirects &&
+                    redirectsRemaining > 0) {
+                    const redirectUrl = response.message.headers['location'];
+                    if (!redirectUrl) {
+                        // if there's no location to redirect to, we won't
+                        break;
+                    }
+                    const parsedRedirectUrl = new URL(redirectUrl);
+                    if (parsedUrl.protocol === 'https:' &&
+                        parsedUrl.protocol !== parsedRedirectUrl.protocol &&
+                        !this._allowRedirectDowngrade) {
+                        throw new Error('Redirect from HTTPS to HTTP protocol. This downgrade is not allowed for security reasons. If you want to allow this behavior, set the allowRedirectDowngrade option to true.');
+                    }
+                    // we need to finish reading the response before reassigning response
+                    // which will leak the open socket.
+                    yield response.readBody();
+                    // strip authorization header if redirected to a different hostname
+                    if (parsedRedirectUrl.hostname !== parsedUrl.hostname) {
+                        for (const header in headers) {
+                            // header names are case insensitive
+                            if (header.toLowerCase() === 'authorization') {
+                                delete headers[header];
+                            }
+                        }
+                    }
+                    // let's make the request with the new redirectUrl
+                    info = this._prepareRequest(verb, parsedRedirectUrl, headers);
+                    response = yield this.requestRaw(info, data);
+                    redirectsRemaining--;
+                }
+                if (!response.message.statusCode ||
+                    !HttpResponseRetryCodes.includes(response.message.statusCode)) {
+                    // If not a retry code, return immediately instead of retrying
+                    return response;
+                }
+                numTries += 1;
+                if (numTries < maxTries) {
+                    yield response.readBody();
+                    yield this._performExponentialBackoff(numTries);
+                }
+            } while (numTries < maxTries);
+            return response;
+        });
     }
     /**
      * Needs to be called if keepAlive is set to true in request options.
@@ -2092,14 +2558,22 @@ class HttpClient {
      * @param data
      */
     requestRaw(info, data) {
-        return new Promise((resolve, reject) => {
-            let callbackForResult = function (err, res) {
-                if (err) {
-                    reject(err);
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => {
+                function callbackForResult(err, res) {
+                    if (err) {
+                        reject(err);
+                    }
+                    else if (!res) {
+                        // If `err` is not passed, then `res` must be passed.
+                        reject(new Error('Unknown error'));
+                    }
+                    else {
+                        resolve(res);
+                    }
                 }
-                resolve(res);
-            };
-            this.requestRawWithCallback(info, data, callbackForResult);
+                this.requestRawWithCallback(info, data, callbackForResult);
+            });
         });
     }
     /**
@@ -2109,21 +2583,24 @@ class HttpClient {
      * @param onResult
      */
     requestRawWithCallback(info, data, onResult) {
-        let socket;
         if (typeof data === 'string') {
+            if (!info.options.headers) {
+                info.options.headers = {};
+            }
             info.options.headers['Content-Length'] = Buffer.byteLength(data, 'utf8');
         }
         let callbackCalled = false;
-        let handleResult = (err, res) => {
+        function handleResult(err, res) {
             if (!callbackCalled) {
                 callbackCalled = true;
                 onResult(err, res);
             }
-        };
-        let req = info.httpModule.request(info.options, (msg) => {
-            let res = new HttpClientResponse(msg);
-            handleResult(null, res);
+        }
+        const req = info.httpModule.request(info.options, (msg) => {
+            const res = new HttpClientResponse(msg);
+            handleResult(undefined, res);
         });
+        let socket;
         req.on('socket', sock => {
             socket = sock;
         });
@@ -2132,12 +2609,12 @@ class HttpClient {
             if (socket) {
                 socket.end();
             }
-            handleResult(new Error('Request timeout: ' + info.options.path), null);
+            handleResult(new Error(`Request timeout: ${info.options.path}`));
         });
         req.on('error', function (err) {
             // err has statusCode property
             // res should have headers
-            handleResult(err, null);
+            handleResult(err);
         });
         if (data && typeof data === 'string') {
             req.write(data, 'utf8');
@@ -2158,7 +2635,7 @@ class HttpClient {
      * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
      */
     getAgent(serverUrl) {
-        let parsedUrl = new URL(serverUrl);
+        const parsedUrl = new URL(serverUrl);
         return this._getAgent(parsedUrl);
     }
     _prepareRequest(method, requestUrl, headers) {
@@ -2182,21 +2659,19 @@ class HttpClient {
         info.options.agent = this._getAgent(info.parsedUrl);
         // gives handlers an opportunity to participate
         if (this.handlers) {
-            this.handlers.forEach(handler => {
+            for (const handler of this.handlers) {
                 handler.prepareRequest(info.options);
-            });
+            }
         }
         return info;
     }
     _mergeHeaders(headers) {
-        const lowercaseKeys = obj => Object.keys(obj).reduce((c, k) => ((c[k.toLowerCase()] = obj[k]), c), {});
         if (this.requestOptions && this.requestOptions.headers) {
-            return Object.assign({}, lowercaseKeys(this.requestOptions.headers), lowercaseKeys(headers));
+            return Object.assign({}, lowercaseKeys(this.requestOptions.headers), lowercaseKeys(headers || {}));
         }
         return lowercaseKeys(headers || {});
     }
     _getExistingOrDefaultHeader(additionalHeaders, header, _default) {
-        const lowercaseKeys = obj => Object.keys(obj).reduce((c, k) => ((c[k.toLowerCase()] = obj[k]), c), {});
         let clientHeader;
         if (this.requestOptions && this.requestOptions.headers) {
             clientHeader = lowercaseKeys(this.requestOptions.headers)[header];
@@ -2205,8 +2680,8 @@ class HttpClient {
     }
     _getAgent(parsedUrl) {
         let agent;
-        let proxyUrl = pm.getProxyUrl(parsedUrl);
-        let useProxy = proxyUrl && proxyUrl.hostname;
+        const proxyUrl = pm.getProxyUrl(parsedUrl);
+        const useProxy = proxyUrl && proxyUrl.hostname;
         if (this._keepAlive && useProxy) {
             agent = this._proxyAgent;
         }
@@ -2214,29 +2689,22 @@ class HttpClient {
             agent = this._agent;
         }
         // if agent is already assigned use that agent.
-        if (!!agent) {
+        if (agent) {
             return agent;
         }
         const usingSsl = parsedUrl.protocol === 'https:';
         let maxSockets = 100;
-        if (!!this.requestOptions) {
+        if (this.requestOptions) {
             maxSockets = this.requestOptions.maxSockets || http.globalAgent.maxSockets;
         }
-        if (useProxy) {
-            // If using proxy, need tunnel
-            if (!tunnel) {
-                tunnel = __nccwpck_require__(4294);
-            }
+        // This is `useProxy` again, but we need to check `proxyURl` directly for TypeScripts's flow analysis.
+        if (proxyUrl && proxyUrl.hostname) {
             const agentOptions = {
-                maxSockets: maxSockets,
+                maxSockets,
                 keepAlive: this._keepAlive,
-                proxy: {
-                    ...((proxyUrl.username || proxyUrl.password) && {
-                        proxyAuth: `${proxyUrl.username}:${proxyUrl.password}`
-                    }),
-                    host: proxyUrl.hostname,
-                    port: proxyUrl.port
-                }
+                proxy: Object.assign(Object.assign({}, ((proxyUrl.username || proxyUrl.password) && {
+                    proxyAuth: `${proxyUrl.username}:${proxyUrl.password}`
+                })), { host: proxyUrl.hostname, port: proxyUrl.port })
             };
             let tunnelAgent;
             const overHttps = proxyUrl.protocol === 'https:';
@@ -2251,7 +2719,7 @@ class HttpClient {
         }
         // if reusing agent across request and tunneling agent isn't assigned create a new agent
         if (this._keepAlive && !agent) {
-            const options = { keepAlive: this._keepAlive, maxSockets: maxSockets };
+            const options = { keepAlive: this._keepAlive, maxSockets };
             agent = usingSsl ? new https.Agent(options) : new http.Agent(options);
             this._agent = agent;
         }
@@ -2270,109 +2738,117 @@ class HttpClient {
         return agent;
     }
     _performExponentialBackoff(retryNumber) {
-        retryNumber = Math.min(ExponentialBackoffCeiling, retryNumber);
-        const ms = ExponentialBackoffTimeSlice * Math.pow(2, retryNumber);
-        return new Promise(resolve => setTimeout(() => resolve(), ms));
+        return __awaiter(this, void 0, void 0, function* () {
+            retryNumber = Math.min(ExponentialBackoffCeiling, retryNumber);
+            const ms = ExponentialBackoffTimeSlice * Math.pow(2, retryNumber);
+            return new Promise(resolve => setTimeout(() => resolve(), ms));
+        });
     }
-    static dateTimeDeserializer(key, value) {
-        if (typeof value === 'string') {
-            let a = new Date(value);
-            if (!isNaN(a.valueOf())) {
-                return a;
-            }
-        }
-        return value;
-    }
-    async _processResponse(res, options) {
-        return new Promise(async (resolve, reject) => {
-            const statusCode = res.message.statusCode;
-            const response = {
-                statusCode: statusCode,
-                result: null,
-                headers: {}
-            };
-            // not found leads to null obj returned
-            if (statusCode == HttpCodes.NotFound) {
-                resolve(response);
-            }
-            let obj;
-            let contents;
-            // get the result from the body
-            try {
-                contents = await res.readBody();
-                if (contents && contents.length > 0) {
-                    if (options && options.deserializeDates) {
-                        obj = JSON.parse(contents, HttpClient.dateTimeDeserializer);
+    _processResponse(res, options) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
+                const statusCode = res.message.statusCode || 0;
+                const response = {
+                    statusCode,
+                    result: null,
+                    headers: {}
+                };
+                // not found leads to null obj returned
+                if (statusCode === HttpCodes.NotFound) {
+                    resolve(response);
+                }
+                // get the result from the body
+                function dateTimeDeserializer(key, value) {
+                    if (typeof value === 'string') {
+                        const a = new Date(value);
+                        if (!isNaN(a.valueOf())) {
+                            return a;
+                        }
+                    }
+                    return value;
+                }
+                let obj;
+                let contents;
+                try {
+                    contents = yield res.readBody();
+                    if (contents && contents.length > 0) {
+                        if (options && options.deserializeDates) {
+                            obj = JSON.parse(contents, dateTimeDeserializer);
+                        }
+                        else {
+                            obj = JSON.parse(contents);
+                        }
+                        response.result = obj;
+                    }
+                    response.headers = res.message.headers;
+                }
+                catch (err) {
+                    // Invalid resource (contents not json);  leaving result obj null
+                }
+                // note that 3xx redirects are handled by the http layer.
+                if (statusCode > 299) {
+                    let msg;
+                    // if exception/error in body, attempt to get better error
+                    if (obj && obj.message) {
+                        msg = obj.message;
+                    }
+                    else if (contents && contents.length > 0) {
+                        // it may be the case that the exception is in the body message as string
+                        msg = contents;
                     }
                     else {
-                        obj = JSON.parse(contents);
+                        msg = `Failed request: (${statusCode})`;
                     }
-                    response.result = obj;
-                }
-                response.headers = res.message.headers;
-            }
-            catch (err) {
-                // Invalid resource (contents not json);  leaving result obj null
-            }
-            // note that 3xx redirects are handled by the http layer.
-            if (statusCode > 299) {
-                let msg;
-                // if exception/error in body, attempt to get better error
-                if (obj && obj.message) {
-                    msg = obj.message;
-                }
-                else if (contents && contents.length > 0) {
-                    // it may be the case that the exception is in the body message as string
-                    msg = contents;
+                    const err = new HttpClientError(msg, statusCode);
+                    err.result = response.result;
+                    reject(err);
                 }
                 else {
-                    msg = 'Failed request: (' + statusCode + ')';
+                    resolve(response);
                 }
-                let err = new HttpClientError(msg, statusCode);
-                err.result = response.result;
-                reject(err);
-            }
-            else {
-                resolve(response);
-            }
+            }));
         });
     }
 }
 exports.HttpClient = HttpClient;
-
+const lowercaseKeys = (obj) => Object.keys(obj).reduce((c, k) => ((c[k.toLowerCase()] = obj[k]), c), {});
+//# sourceMappingURL=index.js.map
 
 /***/ }),
 
-/***/ 6443:
+/***/ 9835:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.checkBypass = exports.getProxyUrl = void 0;
 function getProxyUrl(reqUrl) {
-    let usingSsl = reqUrl.protocol === 'https:';
-    let proxyUrl;
+    const usingSsl = reqUrl.protocol === 'https:';
     if (checkBypass(reqUrl)) {
-        return proxyUrl;
+        return undefined;
     }
-    let proxyVar;
-    if (usingSsl) {
-        proxyVar = process.env['https_proxy'] || process.env['HTTPS_PROXY'];
+    const proxyVar = (() => {
+        if (usingSsl) {
+            return process.env['https_proxy'] || process.env['HTTPS_PROXY'];
+        }
+        else {
+            return process.env['http_proxy'] || process.env['HTTP_PROXY'];
+        }
+    })();
+    if (proxyVar) {
+        return new URL(proxyVar);
     }
     else {
-        proxyVar = process.env['http_proxy'] || process.env['HTTP_PROXY'];
+        return undefined;
     }
-    if (proxyVar) {
-        proxyUrl = new URL(proxyVar);
-    }
-    return proxyUrl;
 }
 exports.getProxyUrl = getProxyUrl;
 function checkBypass(reqUrl) {
     if (!reqUrl.hostname) {
         return false;
     }
-    let noProxy = process.env['no_proxy'] || process.env['NO_PROXY'] || '';
+    const noProxy = process.env['no_proxy'] || process.env['NO_PROXY'] || '';
     if (!noProxy) {
         return false;
     }
@@ -2388,12 +2864,12 @@ function checkBypass(reqUrl) {
         reqPort = 443;
     }
     // Format the request hostname and hostname with port
-    let upperReqHosts = [reqUrl.hostname.toUpperCase()];
+    const upperReqHosts = [reqUrl.hostname.toUpperCase()];
     if (typeof reqPort === 'number') {
         upperReqHosts.push(`${upperReqHosts[0]}:${reqPort}`);
     }
     // Compare request host against noproxy
-    for (let upperNoProxyItem of noProxy
+    for (const upperNoProxyItem of noProxy
         .split(',')
         .map(x => x.trim().toUpperCase())
         .filter(x => x)) {
@@ -2404,7 +2880,7 @@ function checkBypass(reqUrl) {
     return false;
 }
 exports.checkBypass = checkBypass;
-
+//# sourceMappingURL=proxy.js.map
 
 /***/ }),
 
@@ -3053,7 +3529,7 @@ function _objectWithoutProperties(source, excluded) {
   return target;
 }
 
-const VERSION = "3.5.1";
+const VERSION = "3.6.0";
 
 const _excluded = ["authStrategy"];
 class Octokit {
@@ -3719,21 +4195,16 @@ exports.withCustomRequest = withCustomRequest;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 
-const VERSION = "2.17.0";
+const VERSION = "2.21.3";
 
 function ownKeys(object, enumerableOnly) {
   var keys = Object.keys(object);
 
   if (Object.getOwnPropertySymbols) {
     var symbols = Object.getOwnPropertySymbols(object);
-
-    if (enumerableOnly) {
-      symbols = symbols.filter(function (sym) {
-        return Object.getOwnPropertyDescriptor(object, sym).enumerable;
-      });
-    }
-
-    keys.push.apply(keys, symbols);
+    enumerableOnly && (symbols = symbols.filter(function (sym) {
+      return Object.getOwnPropertyDescriptor(object, sym).enumerable;
+    })), keys.push.apply(keys, symbols);
   }
 
   return keys;
@@ -3741,19 +4212,12 @@ function ownKeys(object, enumerableOnly) {
 
 function _objectSpread2(target) {
   for (var i = 1; i < arguments.length; i++) {
-    var source = arguments[i] != null ? arguments[i] : {};
-
-    if (i % 2) {
-      ownKeys(Object(source), true).forEach(function (key) {
-        _defineProperty(target, key, source[key]);
-      });
-    } else if (Object.getOwnPropertyDescriptors) {
-      Object.defineProperties(target, Object.getOwnPropertyDescriptors(source));
-    } else {
-      ownKeys(Object(source)).forEach(function (key) {
-        Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key));
-      });
-    }
+    var source = null != arguments[i] ? arguments[i] : {};
+    i % 2 ? ownKeys(Object(source), !0).forEach(function (key) {
+      _defineProperty(target, key, source[key]);
+    }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)) : ownKeys(Object(source)).forEach(function (key) {
+      Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key));
+    });
   }
 
   return target;
@@ -3903,7 +4367,7 @@ const composePaginateRest = Object.assign(paginate, {
   iterator
 });
 
-const paginatingEndpoints = ["GET /app/hook/deliveries", "GET /app/installations", "GET /applications/grants", "GET /authorizations", "GET /enterprises/{enterprise}/actions/permissions/organizations", "GET /enterprises/{enterprise}/actions/runner-groups", "GET /enterprises/{enterprise}/actions/runner-groups/{runner_group_id}/organizations", "GET /enterprises/{enterprise}/actions/runner-groups/{runner_group_id}/runners", "GET /enterprises/{enterprise}/actions/runners", "GET /enterprises/{enterprise}/actions/runners/downloads", "GET /events", "GET /gists", "GET /gists/public", "GET /gists/starred", "GET /gists/{gist_id}/comments", "GET /gists/{gist_id}/commits", "GET /gists/{gist_id}/forks", "GET /installation/repositories", "GET /issues", "GET /marketplace_listing/plans", "GET /marketplace_listing/plans/{plan_id}/accounts", "GET /marketplace_listing/stubbed/plans", "GET /marketplace_listing/stubbed/plans/{plan_id}/accounts", "GET /networks/{owner}/{repo}/events", "GET /notifications", "GET /organizations", "GET /orgs/{org}/actions/permissions/repositories", "GET /orgs/{org}/actions/runner-groups", "GET /orgs/{org}/actions/runner-groups/{runner_group_id}/repositories", "GET /orgs/{org}/actions/runner-groups/{runner_group_id}/runners", "GET /orgs/{org}/actions/runners", "GET /orgs/{org}/actions/runners/downloads", "GET /orgs/{org}/actions/secrets", "GET /orgs/{org}/actions/secrets/{secret_name}/repositories", "GET /orgs/{org}/blocks", "GET /orgs/{org}/credential-authorizations", "GET /orgs/{org}/events", "GET /orgs/{org}/failed_invitations", "GET /orgs/{org}/hooks", "GET /orgs/{org}/hooks/{hook_id}/deliveries", "GET /orgs/{org}/installations", "GET /orgs/{org}/invitations", "GET /orgs/{org}/invitations/{invitation_id}/teams", "GET /orgs/{org}/issues", "GET /orgs/{org}/members", "GET /orgs/{org}/migrations", "GET /orgs/{org}/migrations/{migration_id}/repositories", "GET /orgs/{org}/outside_collaborators", "GET /orgs/{org}/packages", "GET /orgs/{org}/projects", "GET /orgs/{org}/public_members", "GET /orgs/{org}/repos", "GET /orgs/{org}/secret-scanning/alerts", "GET /orgs/{org}/team-sync/groups", "GET /orgs/{org}/teams", "GET /orgs/{org}/teams/{team_slug}/discussions", "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments", "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}/reactions", "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/reactions", "GET /orgs/{org}/teams/{team_slug}/invitations", "GET /orgs/{org}/teams/{team_slug}/members", "GET /orgs/{org}/teams/{team_slug}/projects", "GET /orgs/{org}/teams/{team_slug}/repos", "GET /orgs/{org}/teams/{team_slug}/team-sync/group-mappings", "GET /orgs/{org}/teams/{team_slug}/teams", "GET /projects/columns/{column_id}/cards", "GET /projects/{project_id}/collaborators", "GET /projects/{project_id}/columns", "GET /repos/{owner}/{repo}/actions/artifacts", "GET /repos/{owner}/{repo}/actions/runners", "GET /repos/{owner}/{repo}/actions/runners/downloads", "GET /repos/{owner}/{repo}/actions/runs", "GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts", "GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs", "GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs", "GET /repos/{owner}/{repo}/actions/secrets", "GET /repos/{owner}/{repo}/actions/workflows", "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs", "GET /repos/{owner}/{repo}/assignees", "GET /repos/{owner}/{repo}/autolinks", "GET /repos/{owner}/{repo}/branches", "GET /repos/{owner}/{repo}/check-runs/{check_run_id}/annotations", "GET /repos/{owner}/{repo}/check-suites/{check_suite_id}/check-runs", "GET /repos/{owner}/{repo}/code-scanning/alerts", "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/instances", "GET /repos/{owner}/{repo}/code-scanning/analyses", "GET /repos/{owner}/{repo}/collaborators", "GET /repos/{owner}/{repo}/comments", "GET /repos/{owner}/{repo}/comments/{comment_id}/reactions", "GET /repos/{owner}/{repo}/commits", "GET /repos/{owner}/{repo}/commits/{commit_sha}/branches-where-head", "GET /repos/{owner}/{repo}/commits/{commit_sha}/comments", "GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls", "GET /repos/{owner}/{repo}/commits/{ref}/check-runs", "GET /repos/{owner}/{repo}/commits/{ref}/check-suites", "GET /repos/{owner}/{repo}/commits/{ref}/statuses", "GET /repos/{owner}/{repo}/contributors", "GET /repos/{owner}/{repo}/deployments", "GET /repos/{owner}/{repo}/deployments/{deployment_id}/statuses", "GET /repos/{owner}/{repo}/events", "GET /repos/{owner}/{repo}/forks", "GET /repos/{owner}/{repo}/git/matching-refs/{ref}", "GET /repos/{owner}/{repo}/hooks", "GET /repos/{owner}/{repo}/hooks/{hook_id}/deliveries", "GET /repos/{owner}/{repo}/invitations", "GET /repos/{owner}/{repo}/issues", "GET /repos/{owner}/{repo}/issues/comments", "GET /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions", "GET /repos/{owner}/{repo}/issues/events", "GET /repos/{owner}/{repo}/issues/{issue_number}/comments", "GET /repos/{owner}/{repo}/issues/{issue_number}/events", "GET /repos/{owner}/{repo}/issues/{issue_number}/labels", "GET /repos/{owner}/{repo}/issues/{issue_number}/reactions", "GET /repos/{owner}/{repo}/issues/{issue_number}/timeline", "GET /repos/{owner}/{repo}/keys", "GET /repos/{owner}/{repo}/labels", "GET /repos/{owner}/{repo}/milestones", "GET /repos/{owner}/{repo}/milestones/{milestone_number}/labels", "GET /repos/{owner}/{repo}/notifications", "GET /repos/{owner}/{repo}/pages/builds", "GET /repos/{owner}/{repo}/projects", "GET /repos/{owner}/{repo}/pulls", "GET /repos/{owner}/{repo}/pulls/comments", "GET /repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions", "GET /repos/{owner}/{repo}/pulls/{pull_number}/comments", "GET /repos/{owner}/{repo}/pulls/{pull_number}/commits", "GET /repos/{owner}/{repo}/pulls/{pull_number}/files", "GET /repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers", "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews", "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}/comments", "GET /repos/{owner}/{repo}/releases", "GET /repos/{owner}/{repo}/releases/{release_id}/assets", "GET /repos/{owner}/{repo}/secret-scanning/alerts", "GET /repos/{owner}/{repo}/stargazers", "GET /repos/{owner}/{repo}/subscribers", "GET /repos/{owner}/{repo}/tags", "GET /repos/{owner}/{repo}/teams", "GET /repositories", "GET /repositories/{repository_id}/environments/{environment_name}/secrets", "GET /scim/v2/enterprises/{enterprise}/Groups", "GET /scim/v2/enterprises/{enterprise}/Users", "GET /scim/v2/organizations/{org}/Users", "GET /search/code", "GET /search/commits", "GET /search/issues", "GET /search/labels", "GET /search/repositories", "GET /search/topics", "GET /search/users", "GET /teams/{team_id}/discussions", "GET /teams/{team_id}/discussions/{discussion_number}/comments", "GET /teams/{team_id}/discussions/{discussion_number}/comments/{comment_number}/reactions", "GET /teams/{team_id}/discussions/{discussion_number}/reactions", "GET /teams/{team_id}/invitations", "GET /teams/{team_id}/members", "GET /teams/{team_id}/projects", "GET /teams/{team_id}/repos", "GET /teams/{team_id}/team-sync/group-mappings", "GET /teams/{team_id}/teams", "GET /user/blocks", "GET /user/emails", "GET /user/followers", "GET /user/following", "GET /user/gpg_keys", "GET /user/installations", "GET /user/installations/{installation_id}/repositories", "GET /user/issues", "GET /user/keys", "GET /user/marketplace_purchases", "GET /user/marketplace_purchases/stubbed", "GET /user/memberships/orgs", "GET /user/migrations", "GET /user/migrations/{migration_id}/repositories", "GET /user/orgs", "GET /user/packages", "GET /user/public_emails", "GET /user/repos", "GET /user/repository_invitations", "GET /user/starred", "GET /user/subscriptions", "GET /user/teams", "GET /users", "GET /users/{username}/events", "GET /users/{username}/events/orgs/{org}", "GET /users/{username}/events/public", "GET /users/{username}/followers", "GET /users/{username}/following", "GET /users/{username}/gists", "GET /users/{username}/gpg_keys", "GET /users/{username}/keys", "GET /users/{username}/orgs", "GET /users/{username}/packages", "GET /users/{username}/projects", "GET /users/{username}/received_events", "GET /users/{username}/received_events/public", "GET /users/{username}/repos", "GET /users/{username}/starred", "GET /users/{username}/subscriptions"];
+const paginatingEndpoints = ["GET /app/hook/deliveries", "GET /app/installations", "GET /applications/grants", "GET /authorizations", "GET /enterprises/{enterprise}/actions/permissions/organizations", "GET /enterprises/{enterprise}/actions/runner-groups", "GET /enterprises/{enterprise}/actions/runner-groups/{runner_group_id}/organizations", "GET /enterprises/{enterprise}/actions/runner-groups/{runner_group_id}/runners", "GET /enterprises/{enterprise}/actions/runners", "GET /enterprises/{enterprise}/audit-log", "GET /enterprises/{enterprise}/secret-scanning/alerts", "GET /enterprises/{enterprise}/settings/billing/advanced-security", "GET /events", "GET /gists", "GET /gists/public", "GET /gists/starred", "GET /gists/{gist_id}/comments", "GET /gists/{gist_id}/commits", "GET /gists/{gist_id}/forks", "GET /installation/repositories", "GET /issues", "GET /licenses", "GET /marketplace_listing/plans", "GET /marketplace_listing/plans/{plan_id}/accounts", "GET /marketplace_listing/stubbed/plans", "GET /marketplace_listing/stubbed/plans/{plan_id}/accounts", "GET /networks/{owner}/{repo}/events", "GET /notifications", "GET /organizations", "GET /orgs/{org}/actions/cache/usage-by-repository", "GET /orgs/{org}/actions/permissions/repositories", "GET /orgs/{org}/actions/runner-groups", "GET /orgs/{org}/actions/runner-groups/{runner_group_id}/repositories", "GET /orgs/{org}/actions/runner-groups/{runner_group_id}/runners", "GET /orgs/{org}/actions/runners", "GET /orgs/{org}/actions/secrets", "GET /orgs/{org}/actions/secrets/{secret_name}/repositories", "GET /orgs/{org}/audit-log", "GET /orgs/{org}/blocks", "GET /orgs/{org}/code-scanning/alerts", "GET /orgs/{org}/codespaces", "GET /orgs/{org}/credential-authorizations", "GET /orgs/{org}/dependabot/secrets", "GET /orgs/{org}/dependabot/secrets/{secret_name}/repositories", "GET /orgs/{org}/events", "GET /orgs/{org}/external-groups", "GET /orgs/{org}/failed_invitations", "GET /orgs/{org}/hooks", "GET /orgs/{org}/hooks/{hook_id}/deliveries", "GET /orgs/{org}/installations", "GET /orgs/{org}/invitations", "GET /orgs/{org}/invitations/{invitation_id}/teams", "GET /orgs/{org}/issues", "GET /orgs/{org}/members", "GET /orgs/{org}/migrations", "GET /orgs/{org}/migrations/{migration_id}/repositories", "GET /orgs/{org}/outside_collaborators", "GET /orgs/{org}/packages", "GET /orgs/{org}/packages/{package_type}/{package_name}/versions", "GET /orgs/{org}/projects", "GET /orgs/{org}/public_members", "GET /orgs/{org}/repos", "GET /orgs/{org}/secret-scanning/alerts", "GET /orgs/{org}/settings/billing/advanced-security", "GET /orgs/{org}/team-sync/groups", "GET /orgs/{org}/teams", "GET /orgs/{org}/teams/{team_slug}/discussions", "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments", "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}/reactions", "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/reactions", "GET /orgs/{org}/teams/{team_slug}/invitations", "GET /orgs/{org}/teams/{team_slug}/members", "GET /orgs/{org}/teams/{team_slug}/projects", "GET /orgs/{org}/teams/{team_slug}/repos", "GET /orgs/{org}/teams/{team_slug}/teams", "GET /projects/columns/{column_id}/cards", "GET /projects/{project_id}/collaborators", "GET /projects/{project_id}/columns", "GET /repos/{owner}/{repo}/actions/artifacts", "GET /repos/{owner}/{repo}/actions/caches", "GET /repos/{owner}/{repo}/actions/runners", "GET /repos/{owner}/{repo}/actions/runs", "GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts", "GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs", "GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs", "GET /repos/{owner}/{repo}/actions/secrets", "GET /repos/{owner}/{repo}/actions/workflows", "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs", "GET /repos/{owner}/{repo}/assignees", "GET /repos/{owner}/{repo}/branches", "GET /repos/{owner}/{repo}/check-runs/{check_run_id}/annotations", "GET /repos/{owner}/{repo}/check-suites/{check_suite_id}/check-runs", "GET /repos/{owner}/{repo}/code-scanning/alerts", "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/instances", "GET /repos/{owner}/{repo}/code-scanning/analyses", "GET /repos/{owner}/{repo}/codespaces", "GET /repos/{owner}/{repo}/codespaces/devcontainers", "GET /repos/{owner}/{repo}/codespaces/secrets", "GET /repos/{owner}/{repo}/collaborators", "GET /repos/{owner}/{repo}/comments", "GET /repos/{owner}/{repo}/comments/{comment_id}/reactions", "GET /repos/{owner}/{repo}/commits", "GET /repos/{owner}/{repo}/commits/{commit_sha}/comments", "GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls", "GET /repos/{owner}/{repo}/commits/{ref}/check-runs", "GET /repos/{owner}/{repo}/commits/{ref}/check-suites", "GET /repos/{owner}/{repo}/commits/{ref}/status", "GET /repos/{owner}/{repo}/commits/{ref}/statuses", "GET /repos/{owner}/{repo}/contributors", "GET /repos/{owner}/{repo}/dependabot/secrets", "GET /repos/{owner}/{repo}/deployments", "GET /repos/{owner}/{repo}/deployments/{deployment_id}/statuses", "GET /repos/{owner}/{repo}/environments", "GET /repos/{owner}/{repo}/events", "GET /repos/{owner}/{repo}/forks", "GET /repos/{owner}/{repo}/git/matching-refs/{ref}", "GET /repos/{owner}/{repo}/hooks", "GET /repos/{owner}/{repo}/hooks/{hook_id}/deliveries", "GET /repos/{owner}/{repo}/invitations", "GET /repos/{owner}/{repo}/issues", "GET /repos/{owner}/{repo}/issues/comments", "GET /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions", "GET /repos/{owner}/{repo}/issues/events", "GET /repos/{owner}/{repo}/issues/{issue_number}/comments", "GET /repos/{owner}/{repo}/issues/{issue_number}/events", "GET /repos/{owner}/{repo}/issues/{issue_number}/labels", "GET /repos/{owner}/{repo}/issues/{issue_number}/reactions", "GET /repos/{owner}/{repo}/issues/{issue_number}/timeline", "GET /repos/{owner}/{repo}/keys", "GET /repos/{owner}/{repo}/labels", "GET /repos/{owner}/{repo}/milestones", "GET /repos/{owner}/{repo}/milestones/{milestone_number}/labels", "GET /repos/{owner}/{repo}/notifications", "GET /repos/{owner}/{repo}/pages/builds", "GET /repos/{owner}/{repo}/projects", "GET /repos/{owner}/{repo}/pulls", "GET /repos/{owner}/{repo}/pulls/comments", "GET /repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions", "GET /repos/{owner}/{repo}/pulls/{pull_number}/comments", "GET /repos/{owner}/{repo}/pulls/{pull_number}/commits", "GET /repos/{owner}/{repo}/pulls/{pull_number}/files", "GET /repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers", "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews", "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}/comments", "GET /repos/{owner}/{repo}/releases", "GET /repos/{owner}/{repo}/releases/{release_id}/assets", "GET /repos/{owner}/{repo}/releases/{release_id}/reactions", "GET /repos/{owner}/{repo}/secret-scanning/alerts", "GET /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}/locations", "GET /repos/{owner}/{repo}/stargazers", "GET /repos/{owner}/{repo}/subscribers", "GET /repos/{owner}/{repo}/tags", "GET /repos/{owner}/{repo}/teams", "GET /repos/{owner}/{repo}/topics", "GET /repositories", "GET /repositories/{repository_id}/environments/{environment_name}/secrets", "GET /search/code", "GET /search/commits", "GET /search/issues", "GET /search/labels", "GET /search/repositories", "GET /search/topics", "GET /search/users", "GET /teams/{team_id}/discussions", "GET /teams/{team_id}/discussions/{discussion_number}/comments", "GET /teams/{team_id}/discussions/{discussion_number}/comments/{comment_number}/reactions", "GET /teams/{team_id}/discussions/{discussion_number}/reactions", "GET /teams/{team_id}/invitations", "GET /teams/{team_id}/members", "GET /teams/{team_id}/projects", "GET /teams/{team_id}/repos", "GET /teams/{team_id}/teams", "GET /user/blocks", "GET /user/codespaces", "GET /user/codespaces/secrets", "GET /user/emails", "GET /user/followers", "GET /user/following", "GET /user/gpg_keys", "GET /user/installations", "GET /user/installations/{installation_id}/repositories", "GET /user/issues", "GET /user/keys", "GET /user/marketplace_purchases", "GET /user/marketplace_purchases/stubbed", "GET /user/memberships/orgs", "GET /user/migrations", "GET /user/migrations/{migration_id}/repositories", "GET /user/orgs", "GET /user/packages", "GET /user/packages/{package_type}/{package_name}/versions", "GET /user/public_emails", "GET /user/repos", "GET /user/repository_invitations", "GET /user/starred", "GET /user/subscriptions", "GET /user/teams", "GET /users", "GET /users/{username}/events", "GET /users/{username}/events/orgs/{org}", "GET /users/{username}/events/public", "GET /users/{username}/followers", "GET /users/{username}/following", "GET /users/{username}/gists", "GET /users/{username}/gpg_keys", "GET /users/{username}/keys", "GET /users/{username}/orgs", "GET /users/{username}/packages", "GET /users/{username}/projects", "GET /users/{username}/received_events", "GET /users/{username}/received_events/public", "GET /users/{username}/repos", "GET /users/{username}/starred", "GET /users/{username}/subscriptions"];
 
 function isPaginatingEndpoint(arg) {
   if (typeof arg === "string") {
@@ -3999,6 +4463,8 @@ function _defineProperty(obj, key, value) {
 
 const Endpoints = {
   actions: {
+    addCustomLabelsToSelfHostedRunnerForOrg: ["POST /orgs/{org}/actions/runners/{runner_id}/labels"],
+    addCustomLabelsToSelfHostedRunnerForRepo: ["POST /repos/{owner}/{repo}/actions/runners/{runner_id}/labels"],
     addSelectedRepoToOrgSecret: ["PUT /orgs/{org}/actions/secrets/{secret_name}/repositories/{repository_id}"],
     approveWorkflowRun: ["POST /repos/{owner}/{repo}/actions/runs/{run_id}/approve"],
     cancelWorkflowRun: ["POST /repos/{owner}/{repo}/actions/runs/{run_id}/cancel"],
@@ -4010,6 +4476,8 @@ const Endpoints = {
     createRemoveTokenForOrg: ["POST /orgs/{org}/actions/runners/remove-token"],
     createRemoveTokenForRepo: ["POST /repos/{owner}/{repo}/actions/runners/remove-token"],
     createWorkflowDispatch: ["POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches"],
+    deleteActionsCacheById: ["DELETE /repos/{owner}/{repo}/actions/caches/{cache_id}"],
+    deleteActionsCacheByKey: ["DELETE /repos/{owner}/{repo}/actions/caches{?key,ref}"],
     deleteArtifact: ["DELETE /repos/{owner}/{repo}/actions/artifacts/{artifact_id}"],
     deleteEnvironmentSecret: ["DELETE /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}"],
     deleteOrgSecret: ["DELETE /orgs/{org}/actions/secrets/{secret_name}"],
@@ -4026,11 +4494,19 @@ const Endpoints = {
     downloadWorkflowRunLogs: ["GET /repos/{owner}/{repo}/actions/runs/{run_id}/logs"],
     enableSelectedRepositoryGithubActionsOrganization: ["PUT /orgs/{org}/actions/permissions/repositories/{repository_id}"],
     enableWorkflow: ["PUT /repos/{owner}/{repo}/actions/workflows/{workflow_id}/enable"],
+    getActionsCacheList: ["GET /repos/{owner}/{repo}/actions/caches"],
+    getActionsCacheUsage: ["GET /repos/{owner}/{repo}/actions/cache/usage"],
+    getActionsCacheUsageByRepoForOrg: ["GET /orgs/{org}/actions/cache/usage-by-repository"],
+    getActionsCacheUsageForEnterprise: ["GET /enterprises/{enterprise}/actions/cache/usage"],
+    getActionsCacheUsageForOrg: ["GET /orgs/{org}/actions/cache/usage"],
     getAllowedActionsOrganization: ["GET /orgs/{org}/actions/permissions/selected-actions"],
     getAllowedActionsRepository: ["GET /repos/{owner}/{repo}/actions/permissions/selected-actions"],
     getArtifact: ["GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}"],
     getEnvironmentPublicKey: ["GET /repositories/{repository_id}/environments/{environment_name}/secrets/public-key"],
     getEnvironmentSecret: ["GET /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}"],
+    getGithubActionsDefaultWorkflowPermissionsEnterprise: ["GET /enterprises/{enterprise}/actions/permissions/workflow"],
+    getGithubActionsDefaultWorkflowPermissionsOrganization: ["GET /orgs/{org}/actions/permissions/workflow"],
+    getGithubActionsDefaultWorkflowPermissionsRepository: ["GET /repos/{owner}/{repo}/actions/permissions/workflow"],
     getGithubActionsPermissionsOrganization: ["GET /orgs/{org}/actions/permissions"],
     getGithubActionsPermissionsRepository: ["GET /repos/{owner}/{repo}/actions/permissions"],
     getJobForWorkflowRun: ["GET /repos/{owner}/{repo}/actions/jobs/{job_id}"],
@@ -4046,6 +4522,7 @@ const Endpoints = {
     getSelfHostedRunnerForOrg: ["GET /orgs/{org}/actions/runners/{runner_id}"],
     getSelfHostedRunnerForRepo: ["GET /repos/{owner}/{repo}/actions/runners/{runner_id}"],
     getWorkflow: ["GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}"],
+    getWorkflowAccessToRepository: ["GET /repos/{owner}/{repo}/actions/permissions/access"],
     getWorkflowRun: ["GET /repos/{owner}/{repo}/actions/runs/{run_id}"],
     getWorkflowRunAttempt: ["GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}"],
     getWorkflowRunUsage: ["GET /repos/{owner}/{repo}/actions/runs/{run_id}/timing"],
@@ -4054,6 +4531,8 @@ const Endpoints = {
     listEnvironmentSecrets: ["GET /repositories/{repository_id}/environments/{environment_name}/secrets"],
     listJobsForWorkflowRun: ["GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs"],
     listJobsForWorkflowRunAttempt: ["GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs"],
+    listLabelsForSelfHostedRunnerForOrg: ["GET /orgs/{org}/actions/runners/{runner_id}/labels"],
+    listLabelsForSelfHostedRunnerForRepo: ["GET /repos/{owner}/{repo}/actions/runners/{runner_id}/labels"],
     listOrgSecrets: ["GET /orgs/{org}/actions/secrets"],
     listRepoSecrets: ["GET /repos/{owner}/{repo}/actions/secrets"],
     listRepoWorkflows: ["GET /repos/{owner}/{repo}/actions/workflows"],
@@ -4066,14 +4545,27 @@ const Endpoints = {
     listWorkflowRunArtifacts: ["GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts"],
     listWorkflowRuns: ["GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs"],
     listWorkflowRunsForRepo: ["GET /repos/{owner}/{repo}/actions/runs"],
+    reRunJobForWorkflowRun: ["POST /repos/{owner}/{repo}/actions/jobs/{job_id}/rerun"],
+    reRunWorkflow: ["POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun"],
+    reRunWorkflowFailedJobs: ["POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun-failed-jobs"],
+    removeAllCustomLabelsFromSelfHostedRunnerForOrg: ["DELETE /orgs/{org}/actions/runners/{runner_id}/labels"],
+    removeAllCustomLabelsFromSelfHostedRunnerForRepo: ["DELETE /repos/{owner}/{repo}/actions/runners/{runner_id}/labels"],
+    removeCustomLabelFromSelfHostedRunnerForOrg: ["DELETE /orgs/{org}/actions/runners/{runner_id}/labels/{name}"],
+    removeCustomLabelFromSelfHostedRunnerForRepo: ["DELETE /repos/{owner}/{repo}/actions/runners/{runner_id}/labels/{name}"],
     removeSelectedRepoFromOrgSecret: ["DELETE /orgs/{org}/actions/secrets/{secret_name}/repositories/{repository_id}"],
     reviewPendingDeploymentsForRun: ["POST /repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments"],
     setAllowedActionsOrganization: ["PUT /orgs/{org}/actions/permissions/selected-actions"],
     setAllowedActionsRepository: ["PUT /repos/{owner}/{repo}/actions/permissions/selected-actions"],
+    setCustomLabelsForSelfHostedRunnerForOrg: ["PUT /orgs/{org}/actions/runners/{runner_id}/labels"],
+    setCustomLabelsForSelfHostedRunnerForRepo: ["PUT /repos/{owner}/{repo}/actions/runners/{runner_id}/labels"],
+    setGithubActionsDefaultWorkflowPermissionsEnterprise: ["PUT /enterprises/{enterprise}/actions/permissions/workflow"],
+    setGithubActionsDefaultWorkflowPermissionsOrganization: ["PUT /orgs/{org}/actions/permissions/workflow"],
+    setGithubActionsDefaultWorkflowPermissionsRepository: ["PUT /repos/{owner}/{repo}/actions/permissions/workflow"],
     setGithubActionsPermissionsOrganization: ["PUT /orgs/{org}/actions/permissions"],
     setGithubActionsPermissionsRepository: ["PUT /repos/{owner}/{repo}/actions/permissions"],
     setSelectedReposForOrgSecret: ["PUT /orgs/{org}/actions/secrets/{secret_name}/repositories"],
-    setSelectedRepositoriesEnabledGithubActionsOrganization: ["PUT /orgs/{org}/actions/permissions/repositories"]
+    setSelectedRepositoriesEnabledGithubActionsOrganization: ["PUT /orgs/{org}/actions/permissions/repositories"],
+    setWorkflowAccessToRepository: ["PUT /repos/{owner}/{repo}/actions/permissions/access"]
   },
   activity: {
     checkRepoIsStarredByAuthenticatedUser: ["GET /user/starred/{owner}/{repo}"],
@@ -4114,16 +4606,6 @@ const Endpoints = {
     }],
     addRepoToInstallationForAuthenticatedUser: ["PUT /user/installations/{installation_id}/repositories/{repository_id}"],
     checkToken: ["POST /applications/{client_id}/token"],
-    createContentAttachment: ["POST /content_references/{content_reference_id}/attachments", {
-      mediaType: {
-        previews: ["corsair"]
-      }
-    }],
-    createContentAttachmentForRepo: ["POST /repos/{owner}/{repo}/content_references/{content_reference_id}/attachments", {
-      mediaType: {
-        previews: ["corsair"]
-      }
-    }],
     createFromManifest: ["POST /app-manifests/{code}/conversions"],
     createInstallationAccessToken: ["POST /app/installations/{installation_id}/access_tokens"],
     deleteAuthorization: ["DELETE /applications/{client_id}/grant"],
@@ -4165,6 +4647,8 @@ const Endpoints = {
   billing: {
     getGithubActionsBillingOrg: ["GET /orgs/{org}/settings/billing/actions"],
     getGithubActionsBillingUser: ["GET /users/{username}/settings/billing/actions"],
+    getGithubAdvancedSecurityBillingGhe: ["GET /enterprises/{enterprise}/settings/billing/advanced-security"],
+    getGithubAdvancedSecurityBillingOrg: ["GET /orgs/{org}/settings/billing/advanced-security"],
     getGithubPackagesBillingOrg: ["GET /orgs/{org}/settings/billing/packages"],
     getGithubPackagesBillingUser: ["GET /users/{username}/settings/billing/packages"],
     getSharedStorageBillingOrg: ["GET /orgs/{org}/settings/billing/shared-storage"],
@@ -4194,6 +4678,7 @@ const Endpoints = {
     getAnalysis: ["GET /repos/{owner}/{repo}/code-scanning/analyses/{analysis_id}"],
     getSarif: ["GET /repos/{owner}/{repo}/code-scanning/sarifs/{sarif_id}"],
     listAlertInstances: ["GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/instances"],
+    listAlertsForOrg: ["GET /orgs/{org}/code-scanning/alerts"],
     listAlertsForRepo: ["GET /repos/{owner}/{repo}/code-scanning/alerts"],
     listAlertsInstances: ["GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/instances", {}, {
       renamed: ["codeScanning", "listAlertInstances"]
@@ -4206,16 +4691,80 @@ const Endpoints = {
     getAllCodesOfConduct: ["GET /codes_of_conduct"],
     getConductCode: ["GET /codes_of_conduct/{key}"]
   },
+  codespaces: {
+    addRepositoryForSecretForAuthenticatedUser: ["PUT /user/codespaces/secrets/{secret_name}/repositories/{repository_id}"],
+    codespaceMachinesForAuthenticatedUser: ["GET /user/codespaces/{codespace_name}/machines"],
+    createForAuthenticatedUser: ["POST /user/codespaces"],
+    createOrUpdateRepoSecret: ["PUT /repos/{owner}/{repo}/codespaces/secrets/{secret_name}"],
+    createOrUpdateSecretForAuthenticatedUser: ["PUT /user/codespaces/secrets/{secret_name}"],
+    createWithPrForAuthenticatedUser: ["POST /repos/{owner}/{repo}/pulls/{pull_number}/codespaces"],
+    createWithRepoForAuthenticatedUser: ["POST /repos/{owner}/{repo}/codespaces"],
+    deleteForAuthenticatedUser: ["DELETE /user/codespaces/{codespace_name}"],
+    deleteFromOrganization: ["DELETE /orgs/{org}/members/{username}/codespaces/{codespace_name}"],
+    deleteRepoSecret: ["DELETE /repos/{owner}/{repo}/codespaces/secrets/{secret_name}"],
+    deleteSecretForAuthenticatedUser: ["DELETE /user/codespaces/secrets/{secret_name}"],
+    exportForAuthenticatedUser: ["POST /user/codespaces/{codespace_name}/exports"],
+    getExportDetailsForAuthenticatedUser: ["GET /user/codespaces/{codespace_name}/exports/{export_id}"],
+    getForAuthenticatedUser: ["GET /user/codespaces/{codespace_name}"],
+    getPublicKeyForAuthenticatedUser: ["GET /user/codespaces/secrets/public-key"],
+    getRepoPublicKey: ["GET /repos/{owner}/{repo}/codespaces/secrets/public-key"],
+    getRepoSecret: ["GET /repos/{owner}/{repo}/codespaces/secrets/{secret_name}"],
+    getSecretForAuthenticatedUser: ["GET /user/codespaces/secrets/{secret_name}"],
+    listDevcontainersInRepositoryForAuthenticatedUser: ["GET /repos/{owner}/{repo}/codespaces/devcontainers"],
+    listForAuthenticatedUser: ["GET /user/codespaces"],
+    listInOrganization: ["GET /orgs/{org}/codespaces", {}, {
+      renamedParameters: {
+        org_id: "org"
+      }
+    }],
+    listInRepositoryForAuthenticatedUser: ["GET /repos/{owner}/{repo}/codespaces"],
+    listRepoSecrets: ["GET /repos/{owner}/{repo}/codespaces/secrets"],
+    listRepositoriesForSecretForAuthenticatedUser: ["GET /user/codespaces/secrets/{secret_name}/repositories"],
+    listSecretsForAuthenticatedUser: ["GET /user/codespaces/secrets"],
+    removeRepositoryForSecretForAuthenticatedUser: ["DELETE /user/codespaces/secrets/{secret_name}/repositories/{repository_id}"],
+    repoMachinesForAuthenticatedUser: ["GET /repos/{owner}/{repo}/codespaces/machines"],
+    setRepositoriesForSecretForAuthenticatedUser: ["PUT /user/codespaces/secrets/{secret_name}/repositories"],
+    startForAuthenticatedUser: ["POST /user/codespaces/{codespace_name}/start"],
+    stopForAuthenticatedUser: ["POST /user/codespaces/{codespace_name}/stop"],
+    stopInOrganization: ["POST /orgs/{org}/members/{username}/codespaces/{codespace_name}/stop"],
+    updateForAuthenticatedUser: ["PATCH /user/codespaces/{codespace_name}"]
+  },
+  dependabot: {
+    addSelectedRepoToOrgSecret: ["PUT /orgs/{org}/dependabot/secrets/{secret_name}/repositories/{repository_id}"],
+    createOrUpdateOrgSecret: ["PUT /orgs/{org}/dependabot/secrets/{secret_name}"],
+    createOrUpdateRepoSecret: ["PUT /repos/{owner}/{repo}/dependabot/secrets/{secret_name}"],
+    deleteOrgSecret: ["DELETE /orgs/{org}/dependabot/secrets/{secret_name}"],
+    deleteRepoSecret: ["DELETE /repos/{owner}/{repo}/dependabot/secrets/{secret_name}"],
+    getOrgPublicKey: ["GET /orgs/{org}/dependabot/secrets/public-key"],
+    getOrgSecret: ["GET /orgs/{org}/dependabot/secrets/{secret_name}"],
+    getRepoPublicKey: ["GET /repos/{owner}/{repo}/dependabot/secrets/public-key"],
+    getRepoSecret: ["GET /repos/{owner}/{repo}/dependabot/secrets/{secret_name}"],
+    listOrgSecrets: ["GET /orgs/{org}/dependabot/secrets"],
+    listRepoSecrets: ["GET /repos/{owner}/{repo}/dependabot/secrets"],
+    listSelectedReposForOrgSecret: ["GET /orgs/{org}/dependabot/secrets/{secret_name}/repositories"],
+    removeSelectedRepoFromOrgSecret: ["DELETE /orgs/{org}/dependabot/secrets/{secret_name}/repositories/{repository_id}"],
+    setSelectedReposForOrgSecret: ["PUT /orgs/{org}/dependabot/secrets/{secret_name}/repositories"]
+  },
+  dependencyGraph: {
+    createRepositorySnapshot: ["POST /repos/{owner}/{repo}/dependency-graph/snapshots"],
+    diffRange: ["GET /repos/{owner}/{repo}/dependency-graph/compare/{basehead}"]
+  },
   emojis: {
     get: ["GET /emojis"]
   },
   enterpriseAdmin: {
+    addCustomLabelsToSelfHostedRunnerForEnterprise: ["POST /enterprises/{enterprise}/actions/runners/{runner_id}/labels"],
     disableSelectedOrganizationGithubActionsEnterprise: ["DELETE /enterprises/{enterprise}/actions/permissions/organizations/{org_id}"],
     enableSelectedOrganizationGithubActionsEnterprise: ["PUT /enterprises/{enterprise}/actions/permissions/organizations/{org_id}"],
     getAllowedActionsEnterprise: ["GET /enterprises/{enterprise}/actions/permissions/selected-actions"],
     getGithubActionsPermissionsEnterprise: ["GET /enterprises/{enterprise}/actions/permissions"],
+    getServerStatistics: ["GET /enterprise-installation/{enterprise_or_org}/server-statistics"],
+    listLabelsForSelfHostedRunnerForEnterprise: ["GET /enterprises/{enterprise}/actions/runners/{runner_id}/labels"],
     listSelectedOrganizationsEnabledGithubActionsEnterprise: ["GET /enterprises/{enterprise}/actions/permissions/organizations"],
+    removeAllCustomLabelsFromSelfHostedRunnerForEnterprise: ["DELETE /enterprises/{enterprise}/actions/runners/{runner_id}/labels"],
+    removeCustomLabelFromSelfHostedRunnerForEnterprise: ["DELETE /enterprises/{enterprise}/actions/runners/{runner_id}/labels/{name}"],
     setAllowedActionsEnterprise: ["PUT /enterprises/{enterprise}/actions/permissions/selected-actions"],
+    setCustomLabelsForSelfHostedRunnerForEnterprise: ["PUT /enterprises/{enterprise}/actions/runners/{runner_id}/labels"],
     setGithubActionsPermissionsEnterprise: ["PUT /enterprises/{enterprise}/actions/permissions"],
     setSelectedOrganizationsEnabledGithubActionsEnterprise: ["PUT /enterprises/{enterprise}/actions/permissions/organizations"]
   },
@@ -4386,6 +4935,7 @@ const Endpoints = {
     list: ["GET /organizations"],
     listAppInstallations: ["GET /orgs/{org}/installations"],
     listBlockedUsers: ["GET /orgs/{org}/blocks"],
+    listCustomRoles: ["GET /organizations/{organization_id}/custom_roles"],
     listFailedInvitations: ["GET /orgs/{org}/failed_invitations"],
     listForAuthenticatedUser: ["GET /user/orgs"],
     listForUser: ["GET /users/{username}/orgs"],
@@ -4514,12 +5064,14 @@ const Endpoints = {
     deleteForIssue: ["DELETE /repos/{owner}/{repo}/issues/{issue_number}/reactions/{reaction_id}"],
     deleteForIssueComment: ["DELETE /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions/{reaction_id}"],
     deleteForPullRequestComment: ["DELETE /repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions/{reaction_id}"],
+    deleteForRelease: ["DELETE /repos/{owner}/{repo}/releases/{release_id}/reactions/{reaction_id}"],
     deleteForTeamDiscussion: ["DELETE /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/reactions/{reaction_id}"],
     deleteForTeamDiscussionComment: ["DELETE /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}/reactions/{reaction_id}"],
     listForCommitComment: ["GET /repos/{owner}/{repo}/comments/{comment_id}/reactions"],
     listForIssue: ["GET /repos/{owner}/{repo}/issues/{issue_number}/reactions"],
     listForIssueComment: ["GET /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions"],
     listForPullRequestReviewComment: ["GET /repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions"],
+    listForRelease: ["GET /repos/{owner}/{repo}/releases/{release_id}/reactions"],
     listForTeamDiscussionCommentInOrg: ["GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}/reactions"],
     listForTeamDiscussionInOrg: ["GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/reactions"]
   },
@@ -4543,6 +5095,7 @@ const Endpoints = {
     }],
     checkCollaborator: ["GET /repos/{owner}/{repo}/collaborators/{username}"],
     checkVulnerabilityAlerts: ["GET /repos/{owner}/{repo}/vulnerability-alerts"],
+    codeownersErrors: ["GET /repos/{owner}/{repo}/codeowners/errors"],
     compareCommits: ["GET /repos/{owner}/{repo}/compare/{base}...{head}"],
     compareCommitsWithBasehead: ["GET /repos/{owner}/{repo}/compare/{basehead}"],
     createAutolink: ["POST /repos/{owner}/{repo}/autolinks"],
@@ -4560,6 +5113,7 @@ const Endpoints = {
     createOrUpdateFileContents: ["PUT /repos/{owner}/{repo}/contents/{path}"],
     createPagesSite: ["POST /repos/{owner}/{repo}/pages"],
     createRelease: ["POST /repos/{owner}/{repo}/releases"],
+    createTagProtection: ["POST /repos/{owner}/{repo}/tags/protection"],
     createUsingTemplate: ["POST /repos/{template_owner}/{template_repo}/generate"],
     createWebhook: ["POST /repos/{owner}/{repo}/hooks"],
     declineInvitation: ["DELETE /user/repository_invitations/{invitation_id}", {}, {
@@ -4582,6 +5136,7 @@ const Endpoints = {
     deletePullRequestReviewProtection: ["DELETE /repos/{owner}/{repo}/branches/{branch}/protection/required_pull_request_reviews"],
     deleteRelease: ["DELETE /repos/{owner}/{repo}/releases/{release_id}"],
     deleteReleaseAsset: ["DELETE /repos/{owner}/{repo}/releases/assets/{asset_id}"],
+    deleteTagProtection: ["DELETE /repos/{owner}/{repo}/tags/protection/{tag_protection_id}"],
     deleteWebhook: ["DELETE /repos/{owner}/{repo}/hooks/{hook_id}"],
     disableAutomatedSecurityFixes: ["DELETE /repos/{owner}/{repo}/automated-security-fixes"],
     disableLfsForRepo: ["DELETE /repos/{owner}/{repo}/lfs"],
@@ -4600,11 +5155,7 @@ const Endpoints = {
     getAdminBranchProtection: ["GET /repos/{owner}/{repo}/branches/{branch}/protection/enforce_admins"],
     getAllEnvironments: ["GET /repos/{owner}/{repo}/environments"],
     getAllStatusCheckContexts: ["GET /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks/contexts"],
-    getAllTopics: ["GET /repos/{owner}/{repo}/topics", {
-      mediaType: {
-        previews: ["mercy"]
-      }
-    }],
+    getAllTopics: ["GET /repos/{owner}/{repo}/topics"],
     getAppsWithAccessToProtectedBranch: ["GET /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/apps"],
     getAutolink: ["GET /repos/{owner}/{repo}/autolinks/{autolink_id}"],
     getBranch: ["GET /repos/{owner}/{repo}/branches/{branch}"],
@@ -4670,6 +5221,7 @@ const Endpoints = {
     listPullRequestsAssociatedWithCommit: ["GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls"],
     listReleaseAssets: ["GET /repos/{owner}/{repo}/releases/{release_id}/assets"],
     listReleases: ["GET /repos/{owner}/{repo}/releases"],
+    listTagProtection: ["GET /repos/{owner}/{repo}/tags/protection"],
     listTags: ["GET /repos/{owner}/{repo}/tags"],
     listTeams: ["GET /repos/{owner}/{repo}/teams"],
     listWebhookDeliveries: ["GET /repos/{owner}/{repo}/hooks/{hook_id}/deliveries"],
@@ -4693,11 +5245,7 @@ const Endpoints = {
       mapToData: "users"
     }],
     renameBranch: ["POST /repos/{owner}/{repo}/branches/{branch}/rename"],
-    replaceAllTopics: ["PUT /repos/{owner}/{repo}/topics", {
-      mediaType: {
-        previews: ["mercy"]
-      }
-    }],
+    replaceAllTopics: ["PUT /repos/{owner}/{repo}/topics"],
     requestPagesBuild: ["POST /repos/{owner}/{repo}/pages/builds"],
     setAdminBranchProtection: ["POST /repos/{owner}/{repo}/branches/{branch}/protection/enforce_admins"],
     setAppAccessRestrictions: ["PUT /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/apps", {}, {
@@ -4738,17 +5286,15 @@ const Endpoints = {
     issuesAndPullRequests: ["GET /search/issues"],
     labels: ["GET /search/labels"],
     repos: ["GET /search/repositories"],
-    topics: ["GET /search/topics", {
-      mediaType: {
-        previews: ["mercy"]
-      }
-    }],
+    topics: ["GET /search/topics"],
     users: ["GET /search/users"]
   },
   secretScanning: {
     getAlert: ["GET /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}"],
+    listAlertsForEnterprise: ["GET /enterprises/{enterprise}/secret-scanning/alerts"],
     listAlertsForOrg: ["GET /orgs/{org}/secret-scanning/alerts"],
     listAlertsForRepo: ["GET /repos/{owner}/{repo}/secret-scanning/alerts"],
+    listLocationsForAlert: ["GET /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}/locations"],
     updateAlert: ["PATCH /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}"]
   },
   teams: {
@@ -4864,7 +5410,7 @@ const Endpoints = {
   }
 };
 
-const VERSION = "5.13.0";
+const VERSION = "5.16.2";
 
 function endpointsToMethods(octokit, endpointsMap) {
   const newMethods = {};
@@ -5067,7 +5613,7 @@ var isPlainObject = __nccwpck_require__(3287);
 var nodeFetch = _interopDefault(__nccwpck_require__(467));
 var requestError = __nccwpck_require__(537);
 
-const VERSION = "5.6.2";
+const VERSION = "5.6.3";
 
 function getBufferResponse(response) {
   return response.arrayBuffer();
@@ -5413,24 +5959,6 @@ function removeHook(state, name, method) {
 
 /***/ }),
 
-/***/ 1934:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-var G = __nccwpck_require__(8640)
-
-module.exports = function() {
-  return (
-    typeof G.Promise === 'function' &&
-    typeof G.Promise.prototype.then === 'function'
-  )
-}
-
-
-/***/ }),
-
 /***/ 8932:
 /***/ ((__unused_webpack_module, exports) => {
 
@@ -5632,7 +6160,70 @@ if (true) {
 
 /***/ }),
 
-/***/ 3338:
+/***/ 682:
+/***/ ((module) => {
+
+"use strict";
+
+
+module.exports = function encodeUtf8 (input) {
+  var result = []
+  var size = input.length
+
+  for (var index = 0; index < size; index++) {
+    var point = input.charCodeAt(index)
+
+    if (point >= 0xD800 && point <= 0xDBFF && size > index + 1) {
+      var second = input.charCodeAt(index + 1)
+
+      if (second >= 0xDC00 && second <= 0xDFFF) {
+        // https://mathiasbynens.be/notes/javascript-encoding#surrogate-formulae
+        point = (point - 0xD800) * 0x400 + second - 0xDC00 + 0x10000
+        index += 1
+      }
+    }
+
+    // US-ASCII
+    if (point < 0x80) {
+      result.push(point)
+      continue
+    }
+
+    // 2-byte UTF-8
+    if (point < 0x800) {
+      result.push((point >> 6) | 192)
+      result.push((point & 63) | 128)
+      continue
+    }
+
+    // 3-byte UTF-8
+    if (point < 0xD800 || (point >= 0xE000 && point < 0x10000)) {
+      result.push((point >> 12) | 224)
+      result.push(((point >> 6) & 63) | 128)
+      result.push((point & 63) | 128)
+      continue
+    }
+
+    // 4-byte UTF-8
+    if (point >= 0x10000 && point <= 0x10FFFF) {
+      result.push((point >> 18) | 240)
+      result.push(((point >> 12) & 63) | 128)
+      result.push(((point >> 6) & 63) | 128)
+      result.push((point & 63) | 128)
+      continue
+    }
+
+    // Invalid character
+    result.push(0xEF, 0xBF, 0xBD)
+  }
+
+  return new Uint8Array(result).buffer
+}
+
+
+/***/ }),
+
+/***/ 9618:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
@@ -5655,8 +6246,11 @@ function copySync (src, dest, opts) {
 
   // Warn about using preserveTimestamps on 32-bit node
   if (opts.preserveTimestamps && process.arch === 'ia32') {
-    console.warn(`fs-extra: Using the preserveTimestamps option in 32-bit node is not recommended;\n
-    see https://github.com/jprichardson/node-fs-extra/issues/269`)
+    process.emitWarning(
+      'Using the preserveTimestamps option in 32-bit node is not recommended;\n\n' +
+      '\tsee https://github.com/jprichardson/node-fs-extra/issues/269',
+      'Warning', 'fs-extra-WARN0002'
+    )
   }
 
   const { srcStat, destStat } = stat.checkPathsSync(src, dest, 'copy', opts)
@@ -5806,19 +6400,6 @@ module.exports = copySync
 
 /***/ }),
 
-/***/ 1135:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-module.exports = {
-  copySync: __nccwpck_require__(3338)
-}
-
-
-/***/ }),
-
 /***/ 8834:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -5848,8 +6429,11 @@ function copy (src, dest, opts, cb) {
 
   // Warn about using preserveTimestamps on 32-bit node
   if (opts.preserveTimestamps && process.arch === 'ia32') {
-    console.warn(`fs-extra: Using the preserveTimestamps option in 32-bit node is not recommended;\n
-    see https://github.com/jprichardson/node-fs-extra/issues/269`)
+    process.emitWarning(
+      'Using the preserveTimestamps option in 32-bit node is not recommended;\n\n' +
+      '\tsee https://github.com/jprichardson/node-fs-extra/issues/269',
+      'Warning', 'fs-extra-WARN0001'
+    )
   }
 
   stat.checkPaths(src, dest, 'copy', opts, (err, stats) => {
@@ -6067,7 +6651,8 @@ module.exports = copy
 
 const u = (__nccwpck_require__(9046).fromCallback)
 module.exports = {
-  copy: u(__nccwpck_require__(8834))
+  copy: u(__nccwpck_require__(8834)),
+  copySync: __nccwpck_require__(9618)
 }
 
 
@@ -6203,26 +6788,26 @@ module.exports = {
 "use strict";
 
 
-const file = __nccwpck_require__(2164)
-const link = __nccwpck_require__(3797)
-const symlink = __nccwpck_require__(2549)
+const { createFile, createFileSync } = __nccwpck_require__(2164)
+const { createLink, createLinkSync } = __nccwpck_require__(3797)
+const { createSymlink, createSymlinkSync } = __nccwpck_require__(2549)
 
 module.exports = {
   // file
-  createFile: file.createFile,
-  createFileSync: file.createFileSync,
-  ensureFile: file.createFile,
-  ensureFileSync: file.createFileSync,
+  createFile,
+  createFileSync,
+  ensureFile: createFile,
+  ensureFileSync: createFileSync,
   // link
-  createLink: link.createLink,
-  createLinkSync: link.createLinkSync,
-  ensureLink: link.createLink,
-  ensureLinkSync: link.createLinkSync,
+  createLink,
+  createLinkSync,
+  ensureLink: createLink,
+  ensureLinkSync: createLinkSync,
   // symlink
-  createSymlink: symlink.createSymlink,
-  createSymlinkSync: symlink.createSymlinkSync,
-  ensureSymlink: symlink.createSymlink,
-  ensureSymlinkSync: symlink.createSymlinkSync
+  createSymlink,
+  createSymlinkSync,
+  ensureSymlink: createSymlink,
+  ensureSymlinkSync: createSymlinkSync
 }
 
 
@@ -6596,7 +7181,6 @@ Object.assign(exports, fs)
 api.forEach(method => {
   exports[method] = u(fs[method])
 })
-exports.realpath.native = u(fs.realpath.native)
 
 // We differ from mz/fs in that we still ship the old, broken, fs.exists()
 // since we are a drop-in replacement for the native module
@@ -6660,6 +7244,16 @@ if (typeof fs.writev === 'function') {
   }
 }
 
+// fs.realpath.native sometimes not available if fs is monkey-patched
+if (typeof fs.realpath.native === 'function') {
+  exports.realpath.native = u(fs.realpath.native)
+} else {
+  process.emitWarning(
+    'fs.realpath.native is not a function. Is fs being monkey-patched?',
+    'Warning', 'fs-extra-WARN0003'
+  )
+}
+
 
 /***/ }),
 
@@ -6673,15 +7267,13 @@ module.exports = {
   // Export promiseified graceful-fs:
   ...__nccwpck_require__(1176),
   // Export extra methods:
-  ...__nccwpck_require__(1135),
   ...__nccwpck_require__(1335),
   ...__nccwpck_require__(6970),
   ...__nccwpck_require__(55),
   ...__nccwpck_require__(213),
   ...__nccwpck_require__(8605),
-  ...__nccwpck_require__(9665),
   ...__nccwpck_require__(1497),
-  ...__nccwpck_require__(6570),
+  ...__nccwpck_require__(1832),
   ...__nccwpck_require__(3835),
   ...__nccwpck_require__(7357)
 }
@@ -6739,7 +7331,7 @@ module.exports = {
 
 
 const { stringify } = __nccwpck_require__(5902)
-const { outputFileSync } = __nccwpck_require__(6570)
+const { outputFileSync } = __nccwpck_require__(1832)
 
 function outputJsonSync (file, data, options) {
   const str = stringify(data, options)
@@ -6759,7 +7351,7 @@ module.exports = outputJsonSync
 
 
 const { stringify } = __nccwpck_require__(5902)
-const { outputFile } = __nccwpck_require__(6570)
+const { outputFile } = __nccwpck_require__(1832)
 
 async function outputJson (file, data, options = {}) {
   const str = stringify(data, options)
@@ -6858,20 +7450,22 @@ module.exports.checkPath = function checkPath (pth) {
 
 /***/ }),
 
-/***/ 9665:
+/***/ 1497:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
 
+const u = (__nccwpck_require__(9046).fromCallback)
 module.exports = {
-  moveSync: __nccwpck_require__(6445)
+  move: u(__nccwpck_require__(2231)),
+  moveSync: __nccwpck_require__(2047)
 }
 
 
 /***/ }),
 
-/***/ 6445:
+/***/ 2047:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
@@ -6879,7 +7473,7 @@ module.exports = {
 
 const fs = __nccwpck_require__(7758)
 const path = __nccwpck_require__(1017)
-const copySync = (__nccwpck_require__(1135).copySync)
+const copySync = (__nccwpck_require__(1335).copySync)
 const removeSync = (__nccwpck_require__(7357).removeSync)
 const mkdirpSync = (__nccwpck_require__(8605).mkdirpSync)
 const stat = __nccwpck_require__(3901)
@@ -6933,20 +7527,6 @@ module.exports = moveSync
 
 /***/ }),
 
-/***/ 1497:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-const u = (__nccwpck_require__(9046).fromCallback)
-module.exports = {
-  move: u(__nccwpck_require__(2231))
-}
-
-
-/***/ }),
-
 /***/ 2231:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -6966,6 +7546,8 @@ function move (src, dest, opts, cb) {
     cb = opts
     opts = {}
   }
+
+  opts = opts || {}
 
   const overwrite = opts.overwrite || opts.clobber || false
 
@@ -7028,7 +7610,7 @@ module.exports = move
 
 /***/ }),
 
-/***/ 6570:
+/***/ 1832:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
@@ -7859,16 +8441,35 @@ function patch (fs) {
 
   var fs$readdir = fs.readdir
   fs.readdir = readdir
+  var noReaddirOptionVersions = /^v[0-5]\./
   function readdir (path, options, cb) {
     if (typeof options === 'function')
       cb = options, options = null
 
+    var go$readdir = noReaddirOptionVersions.test(process.version)
+      ? function go$readdir (path, options, cb, startTime) {
+        return fs$readdir(path, fs$readdirCallback(
+          path, options, cb, startTime
+        ))
+      }
+      : function go$readdir (path, options, cb, startTime) {
+        return fs$readdir(path, options, fs$readdirCallback(
+          path, options, cb, startTime
+        ))
+      }
+
     return go$readdir(path, options, cb)
 
-    function go$readdir (path, options, cb, startTime) {
-      return fs$readdir(path, options, function (err, files) {
+    function fs$readdirCallback (path, options, cb, startTime) {
+      return function (err, files) {
         if (err && (err.code === 'EMFILE' || err.code === 'ENFILE'))
-          enqueue([go$readdir, [path, options, cb], err, startTime || Date.now(), Date.now()])
+          enqueue([
+            go$readdir,
+            [path, options, cb],
+            err,
+            startTime || Date.now(),
+            Date.now()
+          ])
         else {
           if (files && files.sort)
             files.sort()
@@ -7876,7 +8477,7 @@ function patch (fs) {
           if (typeof cb === 'function')
             cb.call(this, err, files)
         }
-      })
+      }
     }
   }
 
@@ -8300,13 +8901,13 @@ function patch (fs) {
   fs.lstatSync = statFixSync(fs.lstatSync)
 
   // if lchmod/lchown do not exist, then make them no-ops
-  if (!fs.lchmod) {
+  if (fs.chmod && !fs.lchmod) {
     fs.lchmod = function (path, mode, cb) {
       if (cb) process.nextTick(cb)
     }
     fs.lchmodSync = function () {}
   }
-  if (!fs.lchown) {
+  if (fs.chown && !fs.lchown) {
     fs.lchown = function (path, uid, gid, cb) {
       if (cb) process.nextTick(cb)
     }
@@ -8323,32 +8924,38 @@ function patch (fs) {
   // CPU to a busy looping process, which can cause the program causing the lock
   // contention to be starved of CPU by node, so the contention doesn't resolve.
   if (platform === "win32") {
-    fs.rename = (function (fs$rename) { return function (from, to, cb) {
-      var start = Date.now()
-      var backoff = 0;
-      fs$rename(from, to, function CB (er) {
-        if (er
-            && (er.code === "EACCES" || er.code === "EPERM")
-            && Date.now() - start < 60000) {
-          setTimeout(function() {
-            fs.stat(to, function (stater, st) {
-              if (stater && stater.code === "ENOENT")
-                fs$rename(from, to, CB);
-              else
-                cb(er)
-            })
-          }, backoff)
-          if (backoff < 100)
-            backoff += 10;
-          return;
-        }
-        if (cb) cb(er)
-      })
-    }})(fs.rename)
+    fs.rename = typeof fs.rename !== 'function' ? fs.rename
+    : (function (fs$rename) {
+      function rename (from, to, cb) {
+        var start = Date.now()
+        var backoff = 0;
+        fs$rename(from, to, function CB (er) {
+          if (er
+              && (er.code === "EACCES" || er.code === "EPERM")
+              && Date.now() - start < 60000) {
+            setTimeout(function() {
+              fs.stat(to, function (stater, st) {
+                if (stater && stater.code === "ENOENT")
+                  fs$rename(from, to, CB);
+                else
+                  cb(er)
+              })
+            }, backoff)
+            if (backoff < 100)
+              backoff += 10;
+            return;
+          }
+          if (cb) cb(er)
+        })
+      }
+      if (Object.setPrototypeOf) Object.setPrototypeOf(rename, fs$rename)
+      return rename
+    })(fs.rename)
   }
 
   // if read() returns EAGAIN, then just try it again.
-  fs.read = (function (fs$read) {
+  fs.read = typeof fs.read !== 'function' ? fs.read
+  : (function (fs$read) {
     function read (fd, buffer, offset, length, position, callback_) {
       var callback
       if (callback_ && typeof callback_ === 'function') {
@@ -8369,7 +8976,8 @@ function patch (fs) {
     return read
   })(fs.read)
 
-  fs.readSync = (function (fs$readSync) { return function (fd, buffer, offset, length, position) {
+  fs.readSync = typeof fs.readSync !== 'function' ? fs.readSync
+  : (function (fs$readSync) { return function (fd, buffer, offset, length, position) {
     var eagCounter = 0
     while (true) {
       try {
@@ -8428,7 +9036,7 @@ function patch (fs) {
   }
 
   function patchLutimes (fs) {
-    if (constants.hasOwnProperty("O_SYMLINK")) {
+    if (constants.hasOwnProperty("O_SYMLINK") && fs.futimes) {
       fs.lutimes = function (path, at, mt, cb) {
         fs.open(path, constants.O_SYMLINK, function (er, fd) {
           if (er) {
@@ -8462,7 +9070,7 @@ function patch (fs) {
         return ret
       }
 
-    } else {
+    } else if (fs.futimes) {
       fs.lutimes = function (_a, _b, _c, cb) { if (cb) process.nextTick(cb) }
       fs.lutimesSync = function () {}
     }
@@ -8539,8 +9147,10 @@ function patch (fs) {
     return function (target, options) {
       var stats = options ? orig.call(fs, target, options)
         : orig.call(fs, target)
-      if (stats.uid < 0) stats.uid += 0x100000000
-      if (stats.gid < 0) stats.gid += 0x100000000
+      if (stats) {
+        if (stats.uid < 0) stats.uid += 0x100000000
+        if (stats.gid < 0) stats.gid += 0x100000000
+      }
       return stats;
     }
   }
@@ -8619,18 +9229,6 @@ function isPlainObject(o) {
 }
 
 exports.isPlainObject = isPlainObject;
-
-
-/***/ }),
-
-/***/ 893:
-/***/ ((module) => {
-
-var toString = {}.toString;
-
-module.exports = Array.isArray || function (arr) {
-  return toString.call(arr) == '[object Array]';
-};
 
 
 /***/ }),
@@ -10162,9 +10760,17 @@ AbortError.prototype = Object.create(Error.prototype);
 AbortError.prototype.constructor = AbortError;
 AbortError.prototype.name = 'AbortError';
 
+const URL$1 = Url.URL || whatwgUrl.URL;
+
 // fix an issue where "PassThrough", "resolve" aren't a named export for node <10
 const PassThrough$1 = Stream.PassThrough;
-const resolve_url = Url.resolve;
+
+const isDomainOrSubdomain = function isDomainOrSubdomain(destination, original) {
+	const orig = new URL$1(original).hostname;
+	const dest = new URL$1(destination).hostname;
+
+	return orig === dest || orig[orig.length - dest.length - 1] === '.' && orig.endsWith(dest);
+};
 
 /**
  * Fetch function
@@ -10252,7 +10858,19 @@ function fetch(url, opts) {
 				const location = headers.get('Location');
 
 				// HTTP fetch step 5.3
-				const locationURL = location === null ? null : resolve_url(request.url, location);
+				let locationURL = null;
+				try {
+					locationURL = location === null ? null : new URL$1(location, request.url).toString();
+				} catch (err) {
+					// error here can only be invalid URL in Location: header
+					// do not throw when options.redirect == manual
+					// let the user extract the errorneous redirect URL
+					if (request.redirect !== 'manual') {
+						reject(new FetchError(`uri requested responds with an invalid redirect URL: ${location}`, 'invalid-redirect'));
+						finalize();
+						return;
+					}
+				}
 
 				// HTTP fetch step 5.5
 				switch (request.redirect) {
@@ -10299,6 +10917,12 @@ function fetch(url, opts) {
 							timeout: request.timeout,
 							size: request.size
 						};
+
+						if (!isDomainOrSubdomain(request.url, locationURL)) {
+							for (const name of ['authorization', 'www-authenticate', 'cookie', 'cookie2']) {
+								requestOpts.headers.delete(name);
+							}
+						}
 
 						// HTTP-redirect fetch step 9
 						if (res.statusCode !== 303 && request.body && getTotalBytes(request) === null) {
@@ -12647,20 +13271,20 @@ function onceStrict (fn) {
 "use strict";
 
 
-var interlaceUtils = __nccwpck_require__(3365);
+let interlaceUtils = __nccwpck_require__(3365);
 
-var pixelBppMapper = [
+let pixelBppMapper = [
   // 0 - dummy entry
-  function() {},
+  function () {},
 
   // 1 - L
   // 0: 0, 1: 0, 2: 0, 3: 0xff
-  function(pxData, data, pxPos, rawPos) {
+  function (pxData, data, pxPos, rawPos) {
     if (rawPos === data.length) {
-      throw new Error('Ran out of data');
+      throw new Error("Ran out of data");
     }
 
-    var pixel = data[rawPos];
+    let pixel = data[rawPos];
     pxData[pxPos] = pixel;
     pxData[pxPos + 1] = pixel;
     pxData[pxPos + 2] = pixel;
@@ -12669,12 +13293,12 @@ var pixelBppMapper = [
 
   // 2 - LA
   // 0: 0, 1: 0, 2: 0, 3: 1
-  function(pxData, data, pxPos, rawPos) {
+  function (pxData, data, pxPos, rawPos) {
     if (rawPos + 1 >= data.length) {
-      throw new Error('Ran out of data');
+      throw new Error("Ran out of data");
     }
 
-    var pixel = data[rawPos];
+    let pixel = data[rawPos];
     pxData[pxPos] = pixel;
     pxData[pxPos + 1] = pixel;
     pxData[pxPos + 2] = pixel;
@@ -12683,9 +13307,9 @@ var pixelBppMapper = [
 
   // 3 - RGB
   // 0: 0, 1: 1, 2: 2, 3: 0xff
-  function(pxData, data, pxPos, rawPos) {
+  function (pxData, data, pxPos, rawPos) {
     if (rawPos + 2 >= data.length) {
-      throw new Error('Ran out of data');
+      throw new Error("Ran out of data");
     }
 
     pxData[pxPos] = data[rawPos];
@@ -12696,26 +13320,26 @@ var pixelBppMapper = [
 
   // 4 - RGBA
   // 0: 0, 1: 1, 2: 2, 3: 3
-  function(pxData, data, pxPos, rawPos) {
+  function (pxData, data, pxPos, rawPos) {
     if (rawPos + 3 >= data.length) {
-      throw new Error('Ran out of data');
+      throw new Error("Ran out of data");
     }
 
     pxData[pxPos] = data[rawPos];
     pxData[pxPos + 1] = data[rawPos + 1];
     pxData[pxPos + 2] = data[rawPos + 2];
     pxData[pxPos + 3] = data[rawPos + 3];
-  }
+  },
 ];
 
-var pixelBppCustomMapper = [
+let pixelBppCustomMapper = [
   // 0 - dummy entry
-  function() {},
+  function () {},
 
   // 1 - L
   // 0: 0, 1: 0, 2: 0, 3: 0xff
-  function(pxData, pixelData, pxPos, maxBit) {
-    var pixel = pixelData[0];
+  function (pxData, pixelData, pxPos, maxBit) {
+    let pixel = pixelData[0];
     pxData[pxPos] = pixel;
     pxData[pxPos + 1] = pixel;
     pxData[pxPos + 2] = pixel;
@@ -12724,8 +13348,8 @@ var pixelBppCustomMapper = [
 
   // 2 - LA
   // 0: 0, 1: 0, 2: 0, 3: 1
-  function(pxData, pixelData, pxPos) {
-    var pixel = pixelData[0];
+  function (pxData, pixelData, pxPos) {
+    let pixel = pixelData[0];
     pxData[pxPos] = pixel;
     pxData[pxPos + 1] = pixel;
     pxData[pxPos + 2] = pixel;
@@ -12734,7 +13358,7 @@ var pixelBppCustomMapper = [
 
   // 3 - RGB
   // 0: 0, 1: 1, 2: 2, 3: 0xff
-  function(pxData, pixelData, pxPos, maxBit) {
+  function (pxData, pixelData, pxPos, maxBit) {
     pxData[pxPos] = pixelData[0];
     pxData[pxPos + 1] = pixelData[1];
     pxData[pxPos + 2] = pixelData[2];
@@ -12743,33 +13367,32 @@ var pixelBppCustomMapper = [
 
   // 4 - RGBA
   // 0: 0, 1: 1, 2: 2, 3: 3
-  function(pxData, pixelData, pxPos) {
+  function (pxData, pixelData, pxPos) {
     pxData[pxPos] = pixelData[0];
     pxData[pxPos + 1] = pixelData[1];
     pxData[pxPos + 2] = pixelData[2];
     pxData[pxPos + 3] = pixelData[3];
-  }
+  },
 ];
 
 function bitRetriever(data, depth) {
-
-  var leftOver = [];
-  var i = 0;
+  let leftOver = [];
+  let i = 0;
 
   function split() {
     if (i === data.length) {
-      throw new Error('Ran out of data');
+      throw new Error("Ran out of data");
     }
-    var byte = data[i];
+    let byte = data[i];
     i++;
-    var byte8, byte7, byte6, byte5, byte4, byte3, byte2, byte1;
+    let byte8, byte7, byte6, byte5, byte4, byte3, byte2, byte1;
     switch (depth) {
       default:
-        throw new Error('unrecognised depth');
+        throw new Error("unrecognised depth");
       case 16:
         byte2 = data[i];
         i++;
-        leftOver.push(((byte << 8) + byte2));
+        leftOver.push((byte << 8) + byte2);
         break;
       case 4:
         byte2 = byte & 0x0f;
@@ -12778,52 +13401,53 @@ function bitRetriever(data, depth) {
         break;
       case 2:
         byte4 = byte & 3;
-        byte3 = byte >> 2 & 3;
-        byte2 = byte >> 4 & 3;
-        byte1 = byte >> 6 & 3;
+        byte3 = (byte >> 2) & 3;
+        byte2 = (byte >> 4) & 3;
+        byte1 = (byte >> 6) & 3;
         leftOver.push(byte1, byte2, byte3, byte4);
         break;
       case 1:
         byte8 = byte & 1;
-        byte7 = byte >> 1 & 1;
-        byte6 = byte >> 2 & 1;
-        byte5 = byte >> 3 & 1;
-        byte4 = byte >> 4 & 1;
-        byte3 = byte >> 5 & 1;
-        byte2 = byte >> 6 & 1;
-        byte1 = byte >> 7 & 1;
+        byte7 = (byte >> 1) & 1;
+        byte6 = (byte >> 2) & 1;
+        byte5 = (byte >> 3) & 1;
+        byte4 = (byte >> 4) & 1;
+        byte3 = (byte >> 5) & 1;
+        byte2 = (byte >> 6) & 1;
+        byte1 = (byte >> 7) & 1;
         leftOver.push(byte1, byte2, byte3, byte4, byte5, byte6, byte7, byte8);
         break;
     }
   }
 
   return {
-    get: function(count) {
+    get: function (count) {
       while (leftOver.length < count) {
         split();
       }
-      var returner = leftOver.slice(0, count);
+      let returner = leftOver.slice(0, count);
       leftOver = leftOver.slice(count);
       return returner;
     },
-    resetAfterLine: function() {
+    resetAfterLine: function () {
       leftOver.length = 0;
     },
-    end: function() {
+    end: function () {
       if (i !== data.length) {
-        throw new Error('extra data found');
+        throw new Error("extra data found");
       }
-    }
+    },
   };
 }
 
-function mapImage8Bit(image, pxData, getPxPos, bpp, data, rawPos) { // eslint-disable-line max-params
-  var imageWidth = image.width;
-  var imageHeight = image.height;
-  var imagePass = image.index;
-  for (var y = 0; y < imageHeight; y++) {
-    for (var x = 0; x < imageWidth; x++) {
-      var pxPos = getPxPos(x, y, imagePass);
+function mapImage8Bit(image, pxData, getPxPos, bpp, data, rawPos) {
+  // eslint-disable-line max-params
+  let imageWidth = image.width;
+  let imageHeight = image.height;
+  let imagePass = image.index;
+  for (let y = 0; y < imageHeight; y++) {
+    for (let x = 0; x < imageWidth; x++) {
+      let pxPos = getPxPos(x, y, imagePass);
       pixelBppMapper[bpp](pxData, data, pxPos, rawPos);
       rawPos += bpp; //eslint-disable-line no-param-reassign
     }
@@ -12831,71 +13455,82 @@ function mapImage8Bit(image, pxData, getPxPos, bpp, data, rawPos) { // eslint-di
   return rawPos;
 }
 
-function mapImageCustomBit(image, pxData, getPxPos, bpp, bits, maxBit) { // eslint-disable-line max-params
-  var imageWidth = image.width;
-  var imageHeight = image.height;
-  var imagePass = image.index;
-  for (var y = 0; y < imageHeight; y++) {
-    for (var x = 0; x < imageWidth; x++) {
-      var pixelData = bits.get(bpp);
-      var pxPos = getPxPos(x, y, imagePass);
+function mapImageCustomBit(image, pxData, getPxPos, bpp, bits, maxBit) {
+  // eslint-disable-line max-params
+  let imageWidth = image.width;
+  let imageHeight = image.height;
+  let imagePass = image.index;
+  for (let y = 0; y < imageHeight; y++) {
+    for (let x = 0; x < imageWidth; x++) {
+      let pixelData = bits.get(bpp);
+      let pxPos = getPxPos(x, y, imagePass);
       pixelBppCustomMapper[bpp](pxData, pixelData, pxPos, maxBit);
     }
     bits.resetAfterLine();
   }
 }
 
-exports.dataToBitMap = function(data, bitmapInfo) {
-
-  var width = bitmapInfo.width;
-  var height = bitmapInfo.height;
-  var depth = bitmapInfo.depth;
-  var bpp = bitmapInfo.bpp;
-  var interlace = bitmapInfo.interlace;
+exports.dataToBitMap = function (data, bitmapInfo) {
+  let width = bitmapInfo.width;
+  let height = bitmapInfo.height;
+  let depth = bitmapInfo.depth;
+  let bpp = bitmapInfo.bpp;
+  let interlace = bitmapInfo.interlace;
+  let bits;
 
   if (depth !== 8) {
-    var bits = bitRetriever(data, depth);
+    bits = bitRetriever(data, depth);
   }
-  var pxData;
+  let pxData;
   if (depth <= 8) {
-    pxData = new Buffer(width * height * 4);
-  }
-  else {
+    pxData = Buffer.alloc(width * height * 4);
+  } else {
     pxData = new Uint16Array(width * height * 4);
   }
-  var maxBit = Math.pow(2, depth) - 1;
-  var rawPos = 0;
-  var images;
-  var getPxPos;
+  let maxBit = Math.pow(2, depth) - 1;
+  let rawPos = 0;
+  let images;
+  let getPxPos;
 
   if (interlace) {
     images = interlaceUtils.getImagePasses(width, height);
     getPxPos = interlaceUtils.getInterlaceIterator(width, height);
-  }
-  else {
-    var nonInterlacedPxPos = 0;
-    getPxPos = function() {
-      var returner = nonInterlacedPxPos;
+  } else {
+    let nonInterlacedPxPos = 0;
+    getPxPos = function () {
+      let returner = nonInterlacedPxPos;
       nonInterlacedPxPos += 4;
       return returner;
     };
     images = [{ width: width, height: height }];
   }
 
-  for (var imageIndex = 0; imageIndex < images.length; imageIndex++) {
+  for (let imageIndex = 0; imageIndex < images.length; imageIndex++) {
     if (depth === 8) {
-      rawPos = mapImage8Bit(images[imageIndex], pxData, getPxPos, bpp, data, rawPos);
-    }
-    else {
-      mapImageCustomBit(images[imageIndex], pxData, getPxPos, bpp, bits, maxBit);
+      rawPos = mapImage8Bit(
+        images[imageIndex],
+        pxData,
+        getPxPos,
+        bpp,
+        data,
+        rawPos
+      );
+    } else {
+      mapImageCustomBit(
+        images[imageIndex],
+        pxData,
+        getPxPos,
+        bpp,
+        bits,
+        maxBit
+      );
     }
   }
   if (depth === 8) {
     if (rawPos !== data.length) {
-      throw new Error('extra data found');
+      throw new Error("extra data found");
     }
-  }
-  else {
+  } else {
     bits.end();
   }
 
@@ -12911,13 +13546,16 @@ exports.dataToBitMap = function(data, bitmapInfo) {
 "use strict";
 
 
-var constants = __nccwpck_require__(3316);
+let constants = __nccwpck_require__(3316);
 
-module.exports = function(dataIn, width, height, options) {
-  var outHasAlpha = [constants.COLORTYPE_COLOR_ALPHA, constants.COLORTYPE_ALPHA].indexOf(options.colorType) !== -1;
+module.exports = function (dataIn, width, height, options) {
+  let outHasAlpha =
+    [constants.COLORTYPE_COLOR_ALPHA, constants.COLORTYPE_ALPHA].indexOf(
+      options.colorType
+    ) !== -1;
   if (options.colorType === options.inputColorType) {
-    var bigEndian = (function() {
-      var buffer = new ArrayBuffer(2);
+    let bigEndian = (function () {
+      let buffer = new ArrayBuffer(2);
       new DataView(buffer).setInt16(0, 256, true /* littleEndian */);
       // Int16Array uses the platform's endianness.
       return new Int16Array(buffer)[0] !== 256;
@@ -12929,24 +13567,24 @@ module.exports = function(dataIn, width, height, options) {
   }
 
   // map to a UInt16 array if data is 16bit, fix endianness below
-  var data = options.bitDepth !== 16 ? dataIn : new Uint16Array(dataIn.buffer);
+  let data = options.bitDepth !== 16 ? dataIn : new Uint16Array(dataIn.buffer);
 
-  var maxValue = 255;
-  var inBpp = constants.COLORTYPE_TO_BPP_MAP[options.inputColorType];
+  let maxValue = 255;
+  let inBpp = constants.COLORTYPE_TO_BPP_MAP[options.inputColorType];
   if (inBpp === 4 && !options.inputHasAlpha) {
     inBpp = 3;
   }
-  var outBpp = constants.COLORTYPE_TO_BPP_MAP[options.colorType];
+  let outBpp = constants.COLORTYPE_TO_BPP_MAP[options.colorType];
   if (options.bitDepth === 16) {
     maxValue = 65535;
     outBpp *= 2;
   }
-  var outData = new Buffer(width * height * outBpp);
+  let outData = Buffer.alloc(width * height * outBpp);
 
-  var inIndex = 0;
-  var outIndex = 0;
+  let inIndex = 0;
+  let outIndex = 0;
 
-  var bgColor = options.bgColor || {};
+  let bgColor = options.bgColor || {};
   if (bgColor.red === undefined) {
     bgColor.red = maxValue;
   }
@@ -12958,10 +13596,10 @@ module.exports = function(dataIn, width, height, options) {
   }
 
   function getRGBA() {
-    var red;
-    var green;
-    var blue;
-    var alpha = maxValue;
+    let red;
+    let green;
+    let blue;
+    let alpha = maxValue;
     switch (options.inputColorType) {
       case constants.COLORTYPE_COLOR_ALPHA:
         alpha = data[inIndex + 3];
@@ -12986,23 +13624,36 @@ module.exports = function(dataIn, width, height, options) {
         blue = red;
         break;
       default:
-        throw new Error('input color type:' + options.inputColorType + ' is not supported at present');
+        throw new Error(
+          "input color type:" +
+            options.inputColorType +
+            " is not supported at present"
+        );
     }
 
     if (options.inputHasAlpha) {
       if (!outHasAlpha) {
         alpha /= maxValue;
-        red = Math.min(Math.max(Math.round((1 - alpha) * bgColor.red + alpha * red), 0), maxValue);
-        green = Math.min(Math.max(Math.round((1 - alpha) * bgColor.green + alpha * green), 0), maxValue);
-        blue = Math.min(Math.max(Math.round((1 - alpha) * bgColor.blue + alpha * blue), 0), maxValue);
+        red = Math.min(
+          Math.max(Math.round((1 - alpha) * bgColor.red + alpha * red), 0),
+          maxValue
+        );
+        green = Math.min(
+          Math.max(Math.round((1 - alpha) * bgColor.green + alpha * green), 0),
+          maxValue
+        );
+        blue = Math.min(
+          Math.max(Math.round((1 - alpha) * bgColor.blue + alpha * blue), 0),
+          maxValue
+        );
       }
     }
     return { red: red, green: green, blue: blue, alpha: alpha };
   }
 
-  for (var y = 0; y < height; y++) {
-    for (var x = 0; x < width; x++) {
-      var rgba = getRGBA(data, inIndex);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let rgba = getRGBA(data, inIndex);
 
       switch (options.colorType) {
         case constants.COLORTYPE_COLOR_ALPHA:
@@ -13014,8 +13665,7 @@ module.exports = function(dataIn, width, height, options) {
             if (outHasAlpha) {
               outData[outIndex + 3] = rgba.alpha;
             }
-          }
-          else {
+          } else {
             outData.writeUInt16BE(rgba.red, outIndex);
             outData.writeUInt16BE(rgba.green, outIndex + 2);
             outData.writeUInt16BE(rgba.blue, outIndex + 4);
@@ -13025,24 +13675,24 @@ module.exports = function(dataIn, width, height, options) {
           }
           break;
         case constants.COLORTYPE_ALPHA:
-        case constants.COLORTYPE_GRAYSCALE:
+        case constants.COLORTYPE_GRAYSCALE: {
           // Convert to grayscale and alpha
-          var grayscale = (rgba.red + rgba.green + rgba.blue) / 3;
+          let grayscale = (rgba.red + rgba.green + rgba.blue) / 3;
           if (options.bitDepth === 8) {
             outData[outIndex] = grayscale;
             if (outHasAlpha) {
               outData[outIndex + 1] = rgba.alpha;
             }
-          }
-          else {
+          } else {
             outData.writeUInt16BE(grayscale, outIndex);
             if (outHasAlpha) {
               outData.writeUInt16BE(rgba.alpha, outIndex + 2);
             }
           }
           break;
+        }
         default:
-          throw new Error('unrecognised color Type ' + options.colorType);
+          throw new Error("unrecognised color Type " + options.colorType);
       }
 
       inIndex += inBpp;
@@ -13062,12 +13712,10 @@ module.exports = function(dataIn, width, height, options) {
 "use strict";
 
 
+let util = __nccwpck_require__(3837);
+let Stream = __nccwpck_require__(2781);
 
-var util = __nccwpck_require__(3837);
-var Stream = __nccwpck_require__(2781);
-
-
-var ChunkStream = module.exports = function() {
+let ChunkStream = (module.exports = function () {
   Stream.call(this);
 
   this._buffers = [];
@@ -13076,45 +13724,43 @@ var ChunkStream = module.exports = function() {
   this._reads = [];
   this._paused = false;
 
-  this._encoding = 'utf8';
+  this._encoding = "utf8";
   this.writable = true;
-};
+});
 util.inherits(ChunkStream, Stream);
 
-
-ChunkStream.prototype.read = function(length, callback) {
-
+ChunkStream.prototype.read = function (length, callback) {
   this._reads.push({
     length: Math.abs(length), // if length < 0 then at most this length
     allowLess: length < 0,
-    func: callback
+    func: callback,
   });
 
-  process.nextTick(function() {
-    this._process();
+  process.nextTick(
+    function () {
+      this._process();
 
-    // its paused and there is not enought data then ask for more
-    if (this._paused && this._reads.length > 0) {
-      this._paused = false;
+      // its paused and there is not enought data then ask for more
+      if (this._paused && this._reads && this._reads.length > 0) {
+        this._paused = false;
 
-      this.emit('drain');
-    }
-  }.bind(this));
+        this.emit("drain");
+      }
+    }.bind(this)
+  );
 };
 
-ChunkStream.prototype.write = function(data, encoding) {
-
+ChunkStream.prototype.write = function (data, encoding) {
   if (!this.writable) {
-    this.emit('error', new Error('Stream not writable'));
+    this.emit("error", new Error("Stream not writable"));
     return false;
   }
 
-  var dataBuffer;
+  let dataBuffer;
   if (Buffer.isBuffer(data)) {
     dataBuffer = data;
-  }
-  else {
-    dataBuffer = new Buffer(data, encoding || this._encoding);
+  } else {
+    dataBuffer = Buffer.from(data, encoding || this._encoding);
   }
 
   this._buffers.push(dataBuffer);
@@ -13130,8 +13776,7 @@ ChunkStream.prototype.write = function(data, encoding) {
   return this.writable && !this._paused;
 };
 
-ChunkStream.prototype.end = function(data, encoding) {
-
+ChunkStream.prototype.end = function (data, encoding) {
   if (data) {
     this.write(data, encoding);
   }
@@ -13146,8 +13791,7 @@ ChunkStream.prototype.end = function(data, encoding) {
   // enqueue or handle end
   if (this._buffers.length === 0) {
     this._end();
-  }
-  else {
+  } else {
     this._buffers.push(null);
     this._process();
   }
@@ -13155,19 +13799,15 @@ ChunkStream.prototype.end = function(data, encoding) {
 
 ChunkStream.prototype.destroySoon = ChunkStream.prototype.end;
 
-ChunkStream.prototype._end = function() {
-
+ChunkStream.prototype._end = function () {
   if (this._reads.length > 0) {
-    this.emit('error',
-      new Error('Unexpected end of input')
-    );
+    this.emit("error", new Error("Unexpected end of input"));
   }
 
   this.destroy();
 };
 
-ChunkStream.prototype.destroy = function() {
-
+ChunkStream.prototype.destroy = function () {
   if (!this._buffers) {
     return;
   }
@@ -13176,26 +13816,23 @@ ChunkStream.prototype.destroy = function() {
   this._reads = null;
   this._buffers = null;
 
-  this.emit('close');
+  this.emit("close");
 };
 
-ChunkStream.prototype._processReadAllowingLess = function(read) {
+ChunkStream.prototype._processReadAllowingLess = function (read) {
   // ok there is any data so that we can satisfy this request
   this._reads.shift(); // == read
 
   // first we need to peek into first buffer
-  var smallerBuf = this._buffers[0];
+  let smallerBuf = this._buffers[0];
 
   // ok there is more data than we need
   if (smallerBuf.length > read.length) {
-
     this._buffered -= read.length;
     this._buffers[0] = smallerBuf.slice(read.length);
 
     read.func.call(this, smallerBuf.slice(0, read.length));
-
-  }
-  else {
+  } else {
     // ok this is less than maximum length so use it all
     this._buffered -= smallerBuf.length;
     this._buffers.shift(); // == smallerBuf
@@ -13204,18 +13841,17 @@ ChunkStream.prototype._processReadAllowingLess = function(read) {
   }
 };
 
-ChunkStream.prototype._processRead = function(read) {
+ChunkStream.prototype._processRead = function (read) {
   this._reads.shift(); // == read
 
-  var pos = 0;
-  var count = 0;
-  var data = new Buffer(read.length);
+  let pos = 0;
+  let count = 0;
+  let data = Buffer.alloc(read.length);
 
   // create buffer for all data
   while (pos < read.length) {
-
-    var buf = this._buffers[count++];
-    var len = Math.min(buf.length, read.length - pos);
+    let buf = this._buffers[count++];
+    let len = Math.min(buf.length, read.length - pos);
 
     buf.copy(data, pos, 0, len);
     pos += len;
@@ -13236,25 +13872,20 @@ ChunkStream.prototype._processRead = function(read) {
   read.func.call(this, data);
 };
 
-ChunkStream.prototype._process = function() {
-
+ChunkStream.prototype._process = function () {
   try {
     // as long as there is any data and read requests
     while (this._buffered > 0 && this._reads && this._reads.length > 0) {
-
-      var read = this._reads[0];
+      let read = this._reads[0];
 
       // read any data (but no more than length)
       if (read.allowLess) {
         this._processReadAllowingLess(read);
-
-      }
-      else if (this._buffered >= read.length) {
+      } else if (this._buffered >= read.length) {
         // ok we can meet some expectations
 
         this._processRead(read);
-      }
-      else {
+      } else {
         // not enought data to satisfy first request in queue
         // so we need to wait for more
         break;
@@ -13264,9 +13895,8 @@ ChunkStream.prototype._process = function() {
     if (this._buffers && !this.writable) {
       this._end();
     }
-  }
-  catch (ex) {
-    this.emit('error', ex);
+  } catch (ex) {
+    this.emit("error", ex);
   }
 };
 
@@ -13279,9 +13909,7 @@ ChunkStream.prototype._process = function() {
 "use strict";
 
 
-
 module.exports = {
-
   PNG_SIGNATURE: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
 
   TYPE_IHDR: 0x49484452,
@@ -13306,10 +13934,10 @@ module.exports = {
     2: 3,
     3: 1,
     4: 2,
-    6: 4
+    6: 4,
   },
 
-  GAMMA_DIVISION: 100000
+  GAMMA_DIVISION: 100000,
 };
 
 
@@ -13321,44 +13949,40 @@ module.exports = {
 "use strict";
 
 
-var crcTable = [];
+let crcTable = [];
 
-(function() {
-  for (var i = 0; i < 256; i++) {
-    var currentCrc = i;
-    for (var j = 0; j < 8; j++) {
+(function () {
+  for (let i = 0; i < 256; i++) {
+    let currentCrc = i;
+    for (let j = 0; j < 8; j++) {
       if (currentCrc & 1) {
         currentCrc = 0xedb88320 ^ (currentCrc >>> 1);
-      }
-      else {
+      } else {
         currentCrc = currentCrc >>> 1;
       }
     }
     crcTable[i] = currentCrc;
   }
-}());
+})();
 
-var CrcCalculator = module.exports = function() {
+let CrcCalculator = (module.exports = function () {
   this._crc = -1;
-};
+});
 
-CrcCalculator.prototype.write = function(data) {
-
-  for (var i = 0; i < data.length; i++) {
+CrcCalculator.prototype.write = function (data) {
+  for (let i = 0; i < data.length; i++) {
     this._crc = crcTable[(this._crc ^ data[i]) & 0xff] ^ (this._crc >>> 8);
   }
   return true;
 };
 
-CrcCalculator.prototype.crc32 = function() {
+CrcCalculator.prototype.crc32 = function () {
   return this._crc ^ -1;
 };
 
-
-CrcCalculator.crc32 = function(buf) {
-
-  var crc = -1;
-  for (var i = 0; i < buf.length; i++) {
+CrcCalculator.crc32 = function (buf) {
+  let crc = -1;
+  for (let i = 0; i < buf.length; i++) {
     crc = crcTable[(crc ^ buf[i]) & 0xff] ^ (crc >>> 8);
   }
   return crc ^ -1;
@@ -13373,44 +13997,38 @@ CrcCalculator.crc32 = function(buf) {
 "use strict";
 
 
-var paethPredictor = __nccwpck_require__(5252);
+let paethPredictor = __nccwpck_require__(5252);
 
 function filterNone(pxData, pxPos, byteWidth, rawData, rawPos) {
-
-  for (var x = 0; x < byteWidth; x++) {
+  for (let x = 0; x < byteWidth; x++) {
     rawData[rawPos + x] = pxData[pxPos + x];
   }
 }
 
 function filterSumNone(pxData, pxPos, byteWidth) {
+  let sum = 0;
+  let length = pxPos + byteWidth;
 
-  var sum = 0;
-  var length = pxPos + byteWidth;
-
-  for (var i = pxPos; i < length; i++) {
+  for (let i = pxPos; i < length; i++) {
     sum += Math.abs(pxData[i]);
   }
   return sum;
 }
 
 function filterSub(pxData, pxPos, byteWidth, rawData, rawPos, bpp) {
-
-  for (var x = 0; x < byteWidth; x++) {
-
-    var left = x >= bpp ? pxData[pxPos + x - bpp] : 0;
-    var val = pxData[pxPos + x] - left;
+  for (let x = 0; x < byteWidth; x++) {
+    let left = x >= bpp ? pxData[pxPos + x - bpp] : 0;
+    let val = pxData[pxPos + x] - left;
 
     rawData[rawPos + x] = val;
   }
 }
 
 function filterSumSub(pxData, pxPos, byteWidth, bpp) {
-
-  var sum = 0;
-  for (var x = 0; x < byteWidth; x++) {
-
-    var left = x >= bpp ? pxData[pxPos + x - bpp] : 0;
-    var val = pxData[pxPos + x] - left;
+  let sum = 0;
+  for (let x = 0; x < byteWidth; x++) {
+    let left = x >= bpp ? pxData[pxPos + x - bpp] : 0;
+    let val = pxData[pxPos + x] - left;
 
     sum += Math.abs(val);
   }
@@ -13419,24 +14037,20 @@ function filterSumSub(pxData, pxPos, byteWidth, bpp) {
 }
 
 function filterUp(pxData, pxPos, byteWidth, rawData, rawPos) {
-
-  for (var x = 0; x < byteWidth; x++) {
-
-    var up = pxPos > 0 ? pxData[pxPos + x - byteWidth] : 0;
-    var val = pxData[pxPos + x] - up;
+  for (let x = 0; x < byteWidth; x++) {
+    let up = pxPos > 0 ? pxData[pxPos + x - byteWidth] : 0;
+    let val = pxData[pxPos + x] - up;
 
     rawData[rawPos + x] = val;
   }
 }
 
 function filterSumUp(pxData, pxPos, byteWidth) {
-
-  var sum = 0;
-  var length = pxPos + byteWidth;
-  for (var x = pxPos; x < length; x++) {
-
-    var up = pxPos > 0 ? pxData[x - byteWidth] : 0;
-    var val = pxData[x] - up;
+  let sum = 0;
+  let length = pxPos + byteWidth;
+  for (let x = pxPos; x < length; x++) {
+    let up = pxPos > 0 ? pxData[x - byteWidth] : 0;
+    let val = pxData[x] - up;
 
     sum += Math.abs(val);
   }
@@ -13445,25 +14059,21 @@ function filterSumUp(pxData, pxPos, byteWidth) {
 }
 
 function filterAvg(pxData, pxPos, byteWidth, rawData, rawPos, bpp) {
-
-  for (var x = 0; x < byteWidth; x++) {
-
-    var left = x >= bpp ? pxData[pxPos + x - bpp] : 0;
-    var up = pxPos > 0 ? pxData[pxPos + x - byteWidth] : 0;
-    var val = pxData[pxPos + x] - ((left + up) >> 1);
+  for (let x = 0; x < byteWidth; x++) {
+    let left = x >= bpp ? pxData[pxPos + x - bpp] : 0;
+    let up = pxPos > 0 ? pxData[pxPos + x - byteWidth] : 0;
+    let val = pxData[pxPos + x] - ((left + up) >> 1);
 
     rawData[rawPos + x] = val;
   }
 }
 
 function filterSumAvg(pxData, pxPos, byteWidth, bpp) {
-
-  var sum = 0;
-  for (var x = 0; x < byteWidth; x++) {
-
-    var left = x >= bpp ? pxData[pxPos + x - bpp] : 0;
-    var up = pxPos > 0 ? pxData[pxPos + x - byteWidth] : 0;
-    var val = pxData[pxPos + x] - ((left + up) >> 1);
+  let sum = 0;
+  for (let x = 0; x < byteWidth; x++) {
+    let left = x >= bpp ? pxData[pxPos + x - bpp] : 0;
+    let up = pxPos > 0 ? pxData[pxPos + x - byteWidth] : 0;
+    let val = pxData[pxPos + x] - ((left + up) >> 1);
 
     sum += Math.abs(val);
   }
@@ -13472,26 +14082,25 @@ function filterSumAvg(pxData, pxPos, byteWidth, bpp) {
 }
 
 function filterPaeth(pxData, pxPos, byteWidth, rawData, rawPos, bpp) {
-
-  for (var x = 0; x < byteWidth; x++) {
-
-    var left = x >= bpp ? pxData[pxPos + x - bpp] : 0;
-    var up = pxPos > 0 ? pxData[pxPos + x - byteWidth] : 0;
-    var upleft = pxPos > 0 && x >= bpp ? pxData[pxPos + x - (byteWidth + bpp)] : 0;
-    var val = pxData[pxPos + x] - paethPredictor(left, up, upleft);
+  for (let x = 0; x < byteWidth; x++) {
+    let left = x >= bpp ? pxData[pxPos + x - bpp] : 0;
+    let up = pxPos > 0 ? pxData[pxPos + x - byteWidth] : 0;
+    let upleft =
+      pxPos > 0 && x >= bpp ? pxData[pxPos + x - (byteWidth + bpp)] : 0;
+    let val = pxData[pxPos + x] - paethPredictor(left, up, upleft);
 
     rawData[rawPos + x] = val;
   }
 }
 
 function filterSumPaeth(pxData, pxPos, byteWidth, bpp) {
-  var sum = 0;
-  for (var x = 0; x < byteWidth; x++) {
-
-    var left = x >= bpp ? pxData[pxPos + x - bpp] : 0;
-    var up = pxPos > 0 ? pxData[pxPos + x - byteWidth] : 0;
-    var upleft = pxPos > 0 && x >= bpp ? pxData[pxPos + x - (byteWidth + bpp)] : 0;
-    var val = pxData[pxPos + x] - paethPredictor(left, up, upleft);
+  let sum = 0;
+  for (let x = 0; x < byteWidth; x++) {
+    let left = x >= bpp ? pxData[pxPos + x - bpp] : 0;
+    let up = pxPos > 0 ? pxData[pxPos + x - byteWidth] : 0;
+    let upleft =
+      pxPos > 0 && x >= bpp ? pxData[pxPos + x - (byteWidth + bpp)] : 0;
+    let val = pxData[pxPos + x] - paethPredictor(left, up, upleft);
 
     sum += Math.abs(val);
   }
@@ -13499,53 +14108,49 @@ function filterSumPaeth(pxData, pxPos, byteWidth, bpp) {
   return sum;
 }
 
-var filters = {
+let filters = {
   0: filterNone,
   1: filterSub,
   2: filterUp,
   3: filterAvg,
-  4: filterPaeth
+  4: filterPaeth,
 };
 
-var filterSums = {
+let filterSums = {
   0: filterSumNone,
   1: filterSumSub,
   2: filterSumUp,
   3: filterSumAvg,
-  4: filterSumPaeth
+  4: filterSumPaeth,
 };
 
-module.exports = function(pxData, width, height, options, bpp) {
-
-  var filterTypes;
-  if (!('filterType' in options) || options.filterType === -1) {
+module.exports = function (pxData, width, height, options, bpp) {
+  let filterTypes;
+  if (!("filterType" in options) || options.filterType === -1) {
     filterTypes = [0, 1, 2, 3, 4];
-  }
-  else if (typeof options.filterType === 'number') {
+  } else if (typeof options.filterType === "number") {
     filterTypes = [options.filterType];
-  }
-  else {
-    throw new Error('unrecognised filter types');
+  } else {
+    throw new Error("unrecognised filter types");
   }
 
   if (options.bitDepth === 16) {
     bpp *= 2;
   }
-  var byteWidth = width * bpp;
-  var rawPos = 0;
-  var pxPos = 0;
-  var rawData = new Buffer((byteWidth + 1) * height);
+  let byteWidth = width * bpp;
+  let rawPos = 0;
+  let pxPos = 0;
+  let rawData = Buffer.alloc((byteWidth + 1) * height);
 
-  var sel = filterTypes[0];
+  let sel = filterTypes[0];
 
-  for (var y = 0; y < height; y++) {
-
+  for (let y = 0; y < height; y++) {
     if (filterTypes.length > 1) {
       // find best filter for this line (with lowest sum of values)
-      var min = Infinity;
+      let min = Infinity;
 
-      for (var i = 0; i < filterTypes.length; i++) {
-        var sum = filterSums[filterTypes[i]](pxData, pxPos, byteWidth, bpp);
+      for (let i = 0; i < filterTypes.length; i++) {
+        let sum = filterSums[filterTypes[i]](pxData, pxPos, byteWidth, bpp);
         if (sum < min) {
           sel = filterTypes[i];
           min = sum;
@@ -13571,28 +14176,27 @@ module.exports = function(pxData, width, height, options, bpp) {
 "use strict";
 
 
-var util = __nccwpck_require__(3837);
-var ChunkStream = __nccwpck_require__(4036);
-var Filter = __nccwpck_require__(6601);
+let util = __nccwpck_require__(3837);
+let ChunkStream = __nccwpck_require__(4036);
+let Filter = __nccwpck_require__(6601);
 
-
-var FilterAsync = module.exports = function(bitmapInfo) {
+let FilterAsync = (module.exports = function (bitmapInfo) {
   ChunkStream.call(this);
 
-  var buffers = [];
-  var that = this;
+  let buffers = [];
+  let that = this;
   this._filter = new Filter(bitmapInfo, {
     read: this.read.bind(this),
-    write: function(buffer) {
+    write: function (buffer) {
       buffers.push(buffer);
     },
-    complete: function() {
-      that.emit('complete', Buffer.concat(buffers));
-    }
+    complete: function () {
+      that.emit("complete", Buffer.concat(buffers));
+    },
   });
 
   this._filter.start();
-};
+});
 util.inherits(FilterAsync, ChunkStream);
 
 
@@ -13604,21 +14208,18 @@ util.inherits(FilterAsync, ChunkStream);
 "use strict";
 
 
-var SyncReader = __nccwpck_require__(3652);
-var Filter = __nccwpck_require__(6601);
+let SyncReader = __nccwpck_require__(3652);
+let Filter = __nccwpck_require__(6601);
 
-
-exports.process = function(inBuffer, bitmapInfo) {
-
-  var outBuffers = [];
-  var reader = new SyncReader(inBuffer);
-  var filter = new Filter(bitmapInfo, {
+exports.process = function (inBuffer, bitmapInfo) {
+  let outBuffers = [];
+  let reader = new SyncReader(inBuffer);
+  let filter = new Filter(bitmapInfo, {
     read: reader.read.bind(reader),
-    write: function(bufferPart) {
+    write: function (bufferPart) {
       outBuffers.push(bufferPart);
     },
-    complete: function() {
-    }
+    complete: function () {},
   });
 
   filter.start();
@@ -13626,6 +14227,7 @@ exports.process = function(inBuffer, bitmapInfo) {
 
   return Buffer.concat(outBuffers);
 };
+
 
 /***/ }),
 
@@ -13635,24 +14237,23 @@ exports.process = function(inBuffer, bitmapInfo) {
 "use strict";
 
 
-var interlaceUtils = __nccwpck_require__(3365);
-var paethPredictor = __nccwpck_require__(5252);
+let interlaceUtils = __nccwpck_require__(3365);
+let paethPredictor = __nccwpck_require__(5252);
 
 function getByteWidth(width, bpp, depth) {
-  var byteWidth = width * bpp;
+  let byteWidth = width * bpp;
   if (depth !== 8) {
     byteWidth = Math.ceil(byteWidth / (8 / depth));
   }
   return byteWidth;
 }
 
-var Filter = module.exports = function(bitmapInfo, dependencies) {
-
-  var width = bitmapInfo.width;
-  var height = bitmapInfo.height;
-  var interlace = bitmapInfo.interlace;
-  var bpp = bitmapInfo.bpp;
-  var depth = bitmapInfo.depth;
+let Filter = (module.exports = function (bitmapInfo, dependencies) {
+  let width = bitmapInfo.width;
+  let height = bitmapInfo.height;
+  let interlace = bitmapInfo.interlace;
+  let bpp = bitmapInfo.bpp;
+  let depth = bitmapInfo.depth;
 
   this.read = dependencies.read;
   this.write = dependencies.write;
@@ -13661,20 +14262,19 @@ var Filter = module.exports = function(bitmapInfo, dependencies) {
   this._imageIndex = 0;
   this._images = [];
   if (interlace) {
-    var passes = interlaceUtils.getImagePasses(width, height);
-    for (var i = 0; i < passes.length; i++) {
+    let passes = interlaceUtils.getImagePasses(width, height);
+    for (let i = 0; i < passes.length; i++) {
       this._images.push({
         byteWidth: getByteWidth(passes[i].width, bpp, depth),
         height: passes[i].height,
-        lineIndex: 0
+        lineIndex: 0,
       });
     }
-  }
-  else {
+  } else {
     this._images.push({
       byteWidth: getByteWidth(width, bpp, depth),
       height: height,
-      lineIndex: 0
+      lineIndex: 0,
     });
   }
 
@@ -13684,86 +14284,96 @@ var Filter = module.exports = function(bitmapInfo, dependencies) {
   // a pixel rather than just a different byte part. However if we are sub byte, we ignore.
   if (depth === 8) {
     this._xComparison = bpp;
-  }
-  else if (depth === 16) {
+  } else if (depth === 16) {
     this._xComparison = bpp * 2;
-  }
-  else {
+  } else {
     this._xComparison = 1;
   }
+});
+
+Filter.prototype.start = function () {
+  this.read(
+    this._images[this._imageIndex].byteWidth + 1,
+    this._reverseFilterLine.bind(this)
+  );
 };
 
-Filter.prototype.start = function() {
-  this.read(this._images[this._imageIndex].byteWidth + 1, this._reverseFilterLine.bind(this));
-};
+Filter.prototype._unFilterType1 = function (
+  rawData,
+  unfilteredLine,
+  byteWidth
+) {
+  let xComparison = this._xComparison;
+  let xBiggerThan = xComparison - 1;
 
-Filter.prototype._unFilterType1 = function(rawData, unfilteredLine, byteWidth) {
-
-  var xComparison = this._xComparison;
-  var xBiggerThan = xComparison - 1;
-
-  for (var x = 0; x < byteWidth; x++) {
-    var rawByte = rawData[1 + x];
-    var f1Left = x > xBiggerThan ? unfilteredLine[x - xComparison] : 0;
+  for (let x = 0; x < byteWidth; x++) {
+    let rawByte = rawData[1 + x];
+    let f1Left = x > xBiggerThan ? unfilteredLine[x - xComparison] : 0;
     unfilteredLine[x] = rawByte + f1Left;
   }
 };
 
-Filter.prototype._unFilterType2 = function(rawData, unfilteredLine, byteWidth) {
+Filter.prototype._unFilterType2 = function (
+  rawData,
+  unfilteredLine,
+  byteWidth
+) {
+  let lastLine = this._lastLine;
 
-  var lastLine = this._lastLine;
-
-  for (var x = 0; x < byteWidth; x++) {
-    var rawByte = rawData[1 + x];
-    var f2Up = lastLine ? lastLine[x] : 0;
+  for (let x = 0; x < byteWidth; x++) {
+    let rawByte = rawData[1 + x];
+    let f2Up = lastLine ? lastLine[x] : 0;
     unfilteredLine[x] = rawByte + f2Up;
   }
 };
 
-Filter.prototype._unFilterType3 = function(rawData, unfilteredLine, byteWidth) {
+Filter.prototype._unFilterType3 = function (
+  rawData,
+  unfilteredLine,
+  byteWidth
+) {
+  let xComparison = this._xComparison;
+  let xBiggerThan = xComparison - 1;
+  let lastLine = this._lastLine;
 
-  var xComparison = this._xComparison;
-  var xBiggerThan = xComparison - 1;
-  var lastLine = this._lastLine;
-
-  for (var x = 0; x < byteWidth; x++) {
-    var rawByte = rawData[1 + x];
-    var f3Up = lastLine ? lastLine[x] : 0;
-    var f3Left = x > xBiggerThan ? unfilteredLine[x - xComparison] : 0;
-    var f3Add = Math.floor((f3Left + f3Up) / 2);
+  for (let x = 0; x < byteWidth; x++) {
+    let rawByte = rawData[1 + x];
+    let f3Up = lastLine ? lastLine[x] : 0;
+    let f3Left = x > xBiggerThan ? unfilteredLine[x - xComparison] : 0;
+    let f3Add = Math.floor((f3Left + f3Up) / 2);
     unfilteredLine[x] = rawByte + f3Add;
   }
 };
 
-Filter.prototype._unFilterType4 = function(rawData, unfilteredLine, byteWidth) {
+Filter.prototype._unFilterType4 = function (
+  rawData,
+  unfilteredLine,
+  byteWidth
+) {
+  let xComparison = this._xComparison;
+  let xBiggerThan = xComparison - 1;
+  let lastLine = this._lastLine;
 
-  var xComparison = this._xComparison;
-  var xBiggerThan = xComparison - 1;
-  var lastLine = this._lastLine;
-
-  for (var x = 0; x < byteWidth; x++) {
-    var rawByte = rawData[1 + x];
-    var f4Up = lastLine ? lastLine[x] : 0;
-    var f4Left = x > xBiggerThan ? unfilteredLine[x - xComparison] : 0;
-    var f4UpLeft = x > xBiggerThan && lastLine ? lastLine[x - xComparison] : 0;
-    var f4Add = paethPredictor(f4Left, f4Up, f4UpLeft);
+  for (let x = 0; x < byteWidth; x++) {
+    let rawByte = rawData[1 + x];
+    let f4Up = lastLine ? lastLine[x] : 0;
+    let f4Left = x > xBiggerThan ? unfilteredLine[x - xComparison] : 0;
+    let f4UpLeft = x > xBiggerThan && lastLine ? lastLine[x - xComparison] : 0;
+    let f4Add = paethPredictor(f4Left, f4Up, f4UpLeft);
     unfilteredLine[x] = rawByte + f4Add;
   }
 };
 
-Filter.prototype._reverseFilterLine = function(rawData) {
-
-  var filter = rawData[0];
-  var unfilteredLine;
-  var currentImage = this._images[this._imageIndex];
-  var byteWidth = currentImage.byteWidth;
+Filter.prototype._reverseFilterLine = function (rawData) {
+  let filter = rawData[0];
+  let unfilteredLine;
+  let currentImage = this._images[this._imageIndex];
+  let byteWidth = currentImage.byteWidth;
 
   if (filter === 0) {
     unfilteredLine = rawData.slice(1, byteWidth + 1);
-  }
-  else {
-
-    unfilteredLine = new Buffer(byteWidth);
+  } else {
+    unfilteredLine = Buffer.alloc(byteWidth);
 
     switch (filter) {
       case 1:
@@ -13779,7 +14389,7 @@ Filter.prototype._reverseFilterLine = function(rawData) {
         this._unFilterType4(rawData, unfilteredLine, byteWidth);
         break;
       default:
-        throw new Error('Unrecognised filter type - ' + filter);
+        throw new Error("Unrecognised filter type - " + filter);
     }
   }
 
@@ -13790,16 +14400,14 @@ Filter.prototype._reverseFilterLine = function(rawData) {
     this._lastLine = null;
     this._imageIndex++;
     currentImage = this._images[this._imageIndex];
-  }
-  else {
+  } else {
     this._lastLine = unfilteredLine;
   }
 
   if (currentImage) {
     // read, using the byte width that may be from the new current image
     this.read(currentImage.byteWidth + 1, this._reverseFilterLine.bind(this));
-  }
-  else {
+  } else {
     this._lastLine = null;
     this.complete();
   }
@@ -13815,17 +14423,17 @@ Filter.prototype._reverseFilterLine = function(rawData) {
 
 
 function dePalette(indata, outdata, width, height, palette) {
-  var pxPos = 0;
+  let pxPos = 0;
   // use values from palette
-  for (var y = 0; y < height; y++) {
-    for (var x = 0; x < width; x++) {
-      var color = palette[indata[pxPos]];
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let color = palette[indata[pxPos]];
 
       if (!color) {
-        throw new Error('index ' + indata[pxPos] + ' not in palette');
+        throw new Error("index " + indata[pxPos] + " not in palette");
       }
 
-      for (var i = 0; i < 4; i++) {
+      for (let i = 0; i < 4; i++) {
         outdata[pxPos + i] = color[i];
       }
       pxPos += 4;
@@ -13834,21 +14442,24 @@ function dePalette(indata, outdata, width, height, palette) {
 }
 
 function replaceTransparentColor(indata, outdata, width, height, transColor) {
-  var pxPos = 0;
-  for (var y = 0; y < height; y++) {
-    for (var x = 0; x < width; x++) {
-      var makeTrans = false;
+  let pxPos = 0;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let makeTrans = false;
 
       if (transColor.length === 1) {
         if (transColor[0] === indata[pxPos]) {
           makeTrans = true;
         }
-      }
-      else if (transColor[0] === indata[pxPos] && transColor[1] === indata[pxPos + 1] && transColor[2] === indata[pxPos + 2]) {
+      } else if (
+        transColor[0] === indata[pxPos] &&
+        transColor[1] === indata[pxPos + 1] &&
+        transColor[2] === indata[pxPos + 2]
+      ) {
         makeTrans = true;
       }
       if (makeTrans) {
-        for (var i = 0; i < 4; i++) {
+        for (let i = 0; i < 4; i++) {
           outdata[pxPos + i] = 0;
         }
       }
@@ -13858,35 +14469,36 @@ function replaceTransparentColor(indata, outdata, width, height, transColor) {
 }
 
 function scaleDepth(indata, outdata, width, height, depth) {
-  var maxOutSample = 255;
-  var maxInSample = Math.pow(2, depth) - 1;
-  var pxPos = 0;
+  let maxOutSample = 255;
+  let maxInSample = Math.pow(2, depth) - 1;
+  let pxPos = 0;
 
-  for (var y = 0; y < height; y++) {
-    for (var x = 0; x < width; x++) {
-      for (var i = 0; i < 4; i++) {
-        outdata[pxPos + i] = Math.floor((indata[pxPos + i] * maxOutSample) / maxInSample + 0.5);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      for (let i = 0; i < 4; i++) {
+        outdata[pxPos + i] = Math.floor(
+          (indata[pxPos + i] * maxOutSample) / maxInSample + 0.5
+        );
       }
       pxPos += 4;
     }
   }
 }
 
-module.exports = function(indata, imageData) {
+module.exports = function (indata, imageData) {
+  let depth = imageData.depth;
+  let width = imageData.width;
+  let height = imageData.height;
+  let colorType = imageData.colorType;
+  let transColor = imageData.transColor;
+  let palette = imageData.palette;
 
-  var depth = imageData.depth;
-  var width = imageData.width;
-  var height = imageData.height;
-  var colorType = imageData.colorType;
-  var transColor = imageData.transColor;
-  var palette = imageData.palette;
+  let outdata = indata; // only different for 16 bits
 
-  var outdata = indata; // only different for 16 bits
-
-  if (colorType === 3) { // paletted
+  if (colorType === 3) {
+    // paletted
     dePalette(indata, outdata, width, height, palette);
-  }
-  else {
+  } else {
     if (transColor) {
       replaceTransparentColor(indata, outdata, width, height, transColor);
     }
@@ -13894,7 +14506,7 @@ module.exports = function(indata, imageData) {
     if (depth !== 8) {
       // if we need to change the buffer size
       if (depth === 16) {
-        outdata = new Buffer(width * height * 4);
+        outdata = Buffer.alloc(width * height * 4);
       }
       scaleDepth(indata, outdata, width, height, depth);
     }
@@ -13922,61 +14534,65 @@ module.exports = function(indata, imageData) {
 // 6 5 6 5 6 5 6 5 6
 // 7 7 7 7 7 7 7 7 7
 
-
-var imagePasses = [
-  { // pass 1 - 1px
+let imagePasses = [
+  {
+    // pass 1 - 1px
     x: [0],
-    y: [0]
+    y: [0],
   },
-  { // pass 2 - 1px
+  {
+    // pass 2 - 1px
     x: [4],
-    y: [0]
+    y: [0],
   },
-  { // pass 3 - 2px
+  {
+    // pass 3 - 2px
     x: [0, 4],
-    y: [4]
+    y: [4],
   },
-  { // pass 4 - 4px
+  {
+    // pass 4 - 4px
     x: [2, 6],
-    y: [0, 4]
+    y: [0, 4],
   },
-  { // pass 5 - 8px
+  {
+    // pass 5 - 8px
     x: [0, 2, 4, 6],
-    y: [2, 6]
+    y: [2, 6],
   },
-  { // pass 6 - 16px
+  {
+    // pass 6 - 16px
     x: [1, 3, 5, 7],
-    y: [0, 2, 4, 6]
+    y: [0, 2, 4, 6],
   },
-  { // pass 7 - 32px
+  {
+    // pass 7 - 32px
     x: [0, 1, 2, 3, 4, 5, 6, 7],
-    y: [1, 3, 5, 7]
-  }
+    y: [1, 3, 5, 7],
+  },
 ];
 
-exports.getImagePasses = function(width, height) {
-  var images = [];
-  var xLeftOver = width % 8;
-  var yLeftOver = height % 8;
-  var xRepeats = (width - xLeftOver) / 8;
-  var yRepeats = (height - yLeftOver) / 8;
-  for (var i = 0; i < imagePasses.length; i++) {
-    var pass = imagePasses[i];
-    var passWidth = xRepeats * pass.x.length;
-    var passHeight = yRepeats * pass.y.length;
-    for (var j = 0; j < pass.x.length; j++) {
+exports.getImagePasses = function (width, height) {
+  let images = [];
+  let xLeftOver = width % 8;
+  let yLeftOver = height % 8;
+  let xRepeats = (width - xLeftOver) / 8;
+  let yRepeats = (height - yLeftOver) / 8;
+  for (let i = 0; i < imagePasses.length; i++) {
+    let pass = imagePasses[i];
+    let passWidth = xRepeats * pass.x.length;
+    let passHeight = yRepeats * pass.y.length;
+    for (let j = 0; j < pass.x.length; j++) {
       if (pass.x[j] < xLeftOver) {
         passWidth++;
-      }
-      else {
+      } else {
         break;
       }
     }
-    for (j = 0; j < pass.y.length; j++) {
+    for (let j = 0; j < pass.y.length; j++) {
       if (pass.y[j] < yLeftOver) {
         passHeight++;
-      }
-      else {
+      } else {
         break;
       }
     }
@@ -13987,15 +14603,20 @@ exports.getImagePasses = function(width, height) {
   return images;
 };
 
-exports.getInterlaceIterator = function(width) {
-  return function(x, y, pass) {
-    var outerXLeftOver = x % imagePasses[pass].x.length;
-    var outerX = (((x - outerXLeftOver) / imagePasses[pass].x.length) * 8) + imagePasses[pass].x[outerXLeftOver];
-    var outerYLeftOver = y % imagePasses[pass].y.length;
-    var outerY = (((y - outerYLeftOver) / imagePasses[pass].y.length) * 8) + imagePasses[pass].y[outerYLeftOver];
-    return (outerX * 4) + (outerY * width * 4);
+exports.getInterlaceIterator = function (width) {
+  return function (x, y, pass) {
+    let outerXLeftOver = x % imagePasses[pass].x.length;
+    let outerX =
+      ((x - outerXLeftOver) / imagePasses[pass].x.length) * 8 +
+      imagePasses[pass].x[outerXLeftOver];
+    let outerYLeftOver = y % imagePasses[pass].y.length;
+    let outerY =
+      ((y - outerYLeftOver) / imagePasses[pass].y.length) * 8 +
+      imagePasses[pass].y[outerYLeftOver];
+    return outerX * 4 + outerY * width * 4;
   };
 };
+
 
 /***/ }),
 
@@ -14005,46 +14626,51 @@ exports.getInterlaceIterator = function(width) {
 "use strict";
 
 
-var util = __nccwpck_require__(3837);
-var Stream = __nccwpck_require__(2781);
-var constants = __nccwpck_require__(3316);
-var Packer = __nccwpck_require__(5249);
+let util = __nccwpck_require__(3837);
+let Stream = __nccwpck_require__(2781);
+let constants = __nccwpck_require__(3316);
+let Packer = __nccwpck_require__(5249);
 
-var PackerAsync = module.exports = function(opt) {
+let PackerAsync = (module.exports = function (opt) {
   Stream.call(this);
 
-  var options = opt || {};
+  let options = opt || {};
 
   this._packer = new Packer(options);
   this._deflate = this._packer.createDeflate();
 
   this.readable = true;
-};
+});
 util.inherits(PackerAsync, Stream);
 
-
-PackerAsync.prototype.pack = function(data, width, height, gamma) {
+PackerAsync.prototype.pack = function (data, width, height, gamma) {
   // Signature
-  this.emit('data', new Buffer(constants.PNG_SIGNATURE));
-  this.emit('data', this._packer.packIHDR(width, height));
+  this.emit("data", Buffer.from(constants.PNG_SIGNATURE));
+  this.emit("data", this._packer.packIHDR(width, height));
 
   if (gamma) {
-    this.emit('data', this._packer.packGAMA(gamma));
+    this.emit("data", this._packer.packGAMA(gamma));
   }
 
-  var filteredData = this._packer.filterData(data, width, height);
+  let filteredData = this._packer.filterData(data, width, height);
 
   // compress it
-  this._deflate.on('error', this.emit.bind(this, 'error'));
+  this._deflate.on("error", this.emit.bind(this, "error"));
 
-  this._deflate.on('data', function(compressedData) {
-    this.emit('data', this._packer.packIDAT(compressedData));
-  }.bind(this));
+  this._deflate.on(
+    "data",
+    function (compressedData) {
+      this.emit("data", this._packer.packIDAT(compressedData));
+    }.bind(this)
+  );
 
-  this._deflate.on('end', function() {
-    this.emit('data', this._packer.packIEND());
-    this.emit('end');
-  }.bind(this));
+  this._deflate.on(
+    "end",
+    function () {
+      this.emit("data", this._packer.packIEND());
+      this.emit("end");
+    }.bind(this)
+  );
 
   this._deflate.end(filteredData);
 };
@@ -14058,28 +14684,29 @@ PackerAsync.prototype.pack = function(data, width, height, gamma) {
 "use strict";
 
 
-var hasSyncZlib = true;
-var zlib = __nccwpck_require__(9796);
+let hasSyncZlib = true;
+let zlib = __nccwpck_require__(9796);
 if (!zlib.deflateSync) {
   hasSyncZlib = false;
 }
-var constants = __nccwpck_require__(3316);
-var Packer = __nccwpck_require__(5249);
+let constants = __nccwpck_require__(3316);
+let Packer = __nccwpck_require__(5249);
 
-module.exports = function(metaData, opt) {
-
+module.exports = function (metaData, opt) {
   if (!hasSyncZlib) {
-    throw new Error('To use the sync capability of this library in old node versions, please pin pngjs to v2.3.0');
+    throw new Error(
+      "To use the sync capability of this library in old node versions, please pin pngjs to v2.3.0"
+    );
   }
 
-  var options = opt || {};
+  let options = opt || {};
 
-  var packer = new Packer(options);
+  let packer = new Packer(options);
 
-  var chunks = [];
+  let chunks = [];
 
   // Signature
-  chunks.push(new Buffer(constants.PNG_SIGNATURE));
+  chunks.push(Buffer.from(constants.PNG_SIGNATURE));
 
   // Header
   chunks.push(packer.packIHDR(metaData.width, metaData.height));
@@ -14088,14 +14715,21 @@ module.exports = function(metaData, opt) {
     chunks.push(packer.packGAMA(metaData.gamma));
   }
 
-  var filteredData = packer.filterData(metaData.data, metaData.width, metaData.height);
+  let filteredData = packer.filterData(
+    metaData.data,
+    metaData.width,
+    metaData.height
+  );
 
   // compress it
-  var compressedData = zlib.deflateSync(filteredData, packer.getDeflateOptions());
+  let compressedData = zlib.deflateSync(
+    filteredData,
+    packer.getDeflateOptions()
+  );
   filteredData = null;
 
   if (!compressedData || !compressedData.length) {
-    throw new Error('bad png - invalid compressed data response');
+    throw new Error("bad png - invalid compressed data response");
   }
   chunks.push(packer.packIDAT(compressedData));
 
@@ -14114,72 +14748,92 @@ module.exports = function(metaData, opt) {
 "use strict";
 
 
-var constants = __nccwpck_require__(3316);
-var CrcStream = __nccwpck_require__(5987);
-var bitPacker = __nccwpck_require__(6659);
-var filter = __nccwpck_require__(7581);
-var zlib = __nccwpck_require__(9796);
+let constants = __nccwpck_require__(3316);
+let CrcStream = __nccwpck_require__(5987);
+let bitPacker = __nccwpck_require__(6659);
+let filter = __nccwpck_require__(7581);
+let zlib = __nccwpck_require__(9796);
 
-var Packer = module.exports = function(options) {
+let Packer = (module.exports = function (options) {
   this._options = options;
 
   options.deflateChunkSize = options.deflateChunkSize || 32 * 1024;
-  options.deflateLevel = options.deflateLevel != null ? options.deflateLevel : 9;
-  options.deflateStrategy = options.deflateStrategy != null ? options.deflateStrategy : 3;
-  options.inputHasAlpha = options.inputHasAlpha != null ? options.inputHasAlpha : true;
+  options.deflateLevel =
+    options.deflateLevel != null ? options.deflateLevel : 9;
+  options.deflateStrategy =
+    options.deflateStrategy != null ? options.deflateStrategy : 3;
+  options.inputHasAlpha =
+    options.inputHasAlpha != null ? options.inputHasAlpha : true;
   options.deflateFactory = options.deflateFactory || zlib.createDeflate;
   options.bitDepth = options.bitDepth || 8;
   // This is outputColorType
-  options.colorType = (typeof options.colorType === 'number') ? options.colorType : constants.COLORTYPE_COLOR_ALPHA;
-  options.inputColorType = (typeof options.inputColorType === 'number') ? options.inputColorType : constants.COLORTYPE_COLOR_ALPHA;
+  options.colorType =
+    typeof options.colorType === "number"
+      ? options.colorType
+      : constants.COLORTYPE_COLOR_ALPHA;
+  options.inputColorType =
+    typeof options.inputColorType === "number"
+      ? options.inputColorType
+      : constants.COLORTYPE_COLOR_ALPHA;
 
-  if ([
-    constants.COLORTYPE_GRAYSCALE,
-    constants.COLORTYPE_COLOR,
-    constants.COLORTYPE_COLOR_ALPHA,
-    constants.COLORTYPE_ALPHA
-  ].indexOf(options.colorType) === -1) {
-    throw new Error('option color type:' + options.colorType + ' is not supported at present');
+  if (
+    [
+      constants.COLORTYPE_GRAYSCALE,
+      constants.COLORTYPE_COLOR,
+      constants.COLORTYPE_COLOR_ALPHA,
+      constants.COLORTYPE_ALPHA,
+    ].indexOf(options.colorType) === -1
+  ) {
+    throw new Error(
+      "option color type:" + options.colorType + " is not supported at present"
+    );
   }
-  if ([
-    constants.COLORTYPE_GRAYSCALE,
-    constants.COLORTYPE_COLOR,
-    constants.COLORTYPE_COLOR_ALPHA,
-    constants.COLORTYPE_ALPHA
-  ].indexOf(options.inputColorType) === -1) {
-    throw new Error('option input color type:' + options.inputColorType + ' is not supported at present');
+  if (
+    [
+      constants.COLORTYPE_GRAYSCALE,
+      constants.COLORTYPE_COLOR,
+      constants.COLORTYPE_COLOR_ALPHA,
+      constants.COLORTYPE_ALPHA,
+    ].indexOf(options.inputColorType) === -1
+  ) {
+    throw new Error(
+      "option input color type:" +
+        options.inputColorType +
+        " is not supported at present"
+    );
   }
   if (options.bitDepth !== 8 && options.bitDepth !== 16) {
-    throw new Error('option bit depth:' + options.bitDepth + ' is not supported at present');
+    throw new Error(
+      "option bit depth:" + options.bitDepth + " is not supported at present"
+    );
   }
-};
+});
 
-Packer.prototype.getDeflateOptions = function() {
+Packer.prototype.getDeflateOptions = function () {
   return {
     chunkSize: this._options.deflateChunkSize,
     level: this._options.deflateLevel,
-    strategy: this._options.deflateStrategy
+    strategy: this._options.deflateStrategy,
   };
 };
 
-Packer.prototype.createDeflate = function() {
+Packer.prototype.createDeflate = function () {
   return this._options.deflateFactory(this.getDeflateOptions());
 };
 
-Packer.prototype.filterData = function(data, width, height) {
+Packer.prototype.filterData = function (data, width, height) {
   // convert to correct format for filtering (e.g. right bpp and bit depth)
-  var packedData = bitPacker(data, width, height, this._options);
+  let packedData = bitPacker(data, width, height, this._options);
 
   // filter pixel data
-  var bpp = constants.COLORTYPE_TO_BPP_MAP[this._options.colorType];
-  var filteredData = filter(packedData, width, height, this._options, bpp);
+  let bpp = constants.COLORTYPE_TO_BPP_MAP[this._options.colorType];
+  let filteredData = filter(packedData, width, height, this._options, bpp);
   return filteredData;
 };
 
-Packer.prototype._packChunk = function(type, data) {
-
-  var len = (data ? data.length : 0);
-  var buf = new Buffer(len + 12);
+Packer.prototype._packChunk = function (type, data) {
+  let len = data ? data.length : 0;
+  let buf = Buffer.alloc(len + 12);
 
   buf.writeUInt32BE(len, 0);
   buf.writeUInt32BE(type, 4);
@@ -14188,19 +14842,21 @@ Packer.prototype._packChunk = function(type, data) {
     data.copy(buf, 8);
   }
 
-  buf.writeInt32BE(CrcStream.crc32(buf.slice(4, buf.length - 4)), buf.length - 4);
+  buf.writeInt32BE(
+    CrcStream.crc32(buf.slice(4, buf.length - 4)),
+    buf.length - 4
+  );
   return buf;
 };
 
-Packer.prototype.packGAMA = function(gamma) {
-  var buf = new Buffer(4);
+Packer.prototype.packGAMA = function (gamma) {
+  let buf = Buffer.alloc(4);
   buf.writeUInt32BE(Math.floor(gamma * constants.GAMMA_DIVISION), 0);
   return this._packChunk(constants.TYPE_gAMA, buf);
 };
 
-Packer.prototype.packIHDR = function(width, height) {
-
-  var buf = new Buffer(13);
+Packer.prototype.packIHDR = function (width, height) {
+  let buf = Buffer.alloc(13);
   buf.writeUInt32BE(width, 0);
   buf.writeUInt32BE(height, 4);
   buf[8] = this._options.bitDepth; // Bit depth
@@ -14212,11 +14868,11 @@ Packer.prototype.packIHDR = function(width, height) {
   return this._packChunk(constants.TYPE_IHDR, buf);
 };
 
-Packer.prototype.packIDAT = function(data) {
+Packer.prototype.packIDAT = function (data) {
   return this._packChunk(constants.TYPE_IDAT, data);
 };
 
-Packer.prototype.packIEND = function() {
+Packer.prototype.packIEND = function () {
   return this._packChunk(constants.TYPE_IEND, null);
 };
 
@@ -14230,11 +14886,10 @@ Packer.prototype.packIEND = function() {
 
 
 module.exports = function paethPredictor(left, above, upLeft) {
-
-  var paeth = left + above - upLeft;
-  var pLeft = Math.abs(paeth - left);
-  var pAbove = Math.abs(paeth - above);
-  var pUpLeft = Math.abs(paeth - upLeft);
+  let paeth = left + above - upLeft;
+  let pLeft = Math.abs(paeth - left);
+  let pAbove = Math.abs(paeth - above);
+  let pUpLeft = Math.abs(paeth - upLeft);
 
   if (pLeft <= pAbove && pLeft <= pUpLeft) {
     return left;
@@ -14245,6 +14900,7 @@ module.exports = function paethPredictor(left, above, upLeft) {
   return upLeft;
 };
 
+
 /***/ }),
 
 /***/ 699:
@@ -14253,40 +14909,38 @@ module.exports = function paethPredictor(left, above, upLeft) {
 "use strict";
 
 
-var util = __nccwpck_require__(3837);
-var zlib = __nccwpck_require__(9796);
-var ChunkStream = __nccwpck_require__(4036);
-var FilterAsync = __nccwpck_require__(528);
-var Parser = __nccwpck_require__(2225);
-var bitmapper = __nccwpck_require__(8054);
-var formatNormaliser = __nccwpck_require__(3928);
+let util = __nccwpck_require__(3837);
+let zlib = __nccwpck_require__(9796);
+let ChunkStream = __nccwpck_require__(4036);
+let FilterAsync = __nccwpck_require__(528);
+let Parser = __nccwpck_require__(2225);
+let bitmapper = __nccwpck_require__(8054);
+let formatNormaliser = __nccwpck_require__(3928);
 
-var ParserAsync = module.exports = function(options) {
+let ParserAsync = (module.exports = function (options) {
   ChunkStream.call(this);
 
   this._parser = new Parser(options, {
     read: this.read.bind(this),
     error: this._handleError.bind(this),
     metadata: this._handleMetaData.bind(this),
-    gamma: this.emit.bind(this, 'gamma'),
+    gamma: this.emit.bind(this, "gamma"),
     palette: this._handlePalette.bind(this),
     transColor: this._handleTransColor.bind(this),
     finished: this._finished.bind(this),
     inflateData: this._inflateData.bind(this),
     simpleTransparency: this._simpleTransparency.bind(this),
-    headersFinished: this._headersFinished.bind(this)
+    headersFinished: this._headersFinished.bind(this),
   });
   this._options = options;
   this.writable = true;
 
   this._parser.start();
-};
+});
 util.inherits(ParserAsync, ChunkStream);
 
-
-ParserAsync.prototype._handleError = function(err) {
-
-  this.emit('error', err);
+ParserAsync.prototype._handleError = function (err) {
+  this.emit("error", err);
 
   this.writable = false;
 
@@ -14301,42 +14955,47 @@ ParserAsync.prototype._handleError = function(err) {
     // For backward compatibility with Node 7 and below.
     // Suppress errors due to _inflate calling write() even after
     // it's destroy()'ed.
-    this._filter.on('error', function() {});
+    this._filter.on("error", function () {});
   }
 
   this.errord = true;
 };
 
-ParserAsync.prototype._inflateData = function(data) {
+ParserAsync.prototype._inflateData = function (data) {
   if (!this._inflate) {
     if (this._bitmapInfo.interlace) {
       this._inflate = zlib.createInflate();
 
-      this._inflate.on('error', this.emit.bind(this, 'error'));
-      this._filter.on('complete', this._complete.bind(this));
+      this._inflate.on("error", this.emit.bind(this, "error"));
+      this._filter.on("complete", this._complete.bind(this));
 
       this._inflate.pipe(this._filter);
-    }
-    else {
-      var rowSize = ((this._bitmapInfo.width * this._bitmapInfo.bpp * this._bitmapInfo.depth + 7) >> 3) + 1;
-      var imageSize = rowSize * this._bitmapInfo.height;
-      var chunkSize = Math.max(imageSize, zlib.Z_MIN_CHUNK);
+    } else {
+      let rowSize =
+        ((this._bitmapInfo.width *
+          this._bitmapInfo.bpp *
+          this._bitmapInfo.depth +
+          7) >>
+          3) +
+        1;
+      let imageSize = rowSize * this._bitmapInfo.height;
+      let chunkSize = Math.max(imageSize, zlib.Z_MIN_CHUNK);
 
       this._inflate = zlib.createInflate({ chunkSize: chunkSize });
-      var leftToInflate = imageSize;
+      let leftToInflate = imageSize;
 
-      var emitError = this.emit.bind(this, 'error');
-      this._inflate.on('error', function(err) {
+      let emitError = this.emit.bind(this, "error");
+      this._inflate.on("error", function (err) {
         if (!leftToInflate) {
           return;
         }
 
         emitError(err);
       });
-      this._filter.on('complete', this._complete.bind(this));
+      this._filter.on("complete", this._complete.bind(this));
 
-      var filterWrite = this._filter.write.bind(this._filter);
-      this._inflate.on('data', function(chunk) {
+      let filterWrite = this._filter.write.bind(this._filter);
+      this._inflate.on("data", function (chunk) {
         if (!leftToInflate) {
           return;
         }
@@ -14350,70 +15009,68 @@ ParserAsync.prototype._inflateData = function(data) {
         filterWrite(chunk);
       });
 
-      this._inflate.on('end', this._filter.end.bind(this._filter));
+      this._inflate.on("end", this._filter.end.bind(this._filter));
     }
   }
   this._inflate.write(data);
 };
 
-ParserAsync.prototype._handleMetaData = function(metaData) {
+ParserAsync.prototype._handleMetaData = function (metaData) {
   this._metaData = metaData;
   this._bitmapInfo = Object.create(metaData);
 
   this._filter = new FilterAsync(this._bitmapInfo);
 };
 
-ParserAsync.prototype._handleTransColor = function(transColor) {
+ParserAsync.prototype._handleTransColor = function (transColor) {
   this._bitmapInfo.transColor = transColor;
 };
 
-ParserAsync.prototype._handlePalette = function(palette) {
+ParserAsync.prototype._handlePalette = function (palette) {
   this._bitmapInfo.palette = palette;
 };
 
-ParserAsync.prototype._simpleTransparency = function() {
+ParserAsync.prototype._simpleTransparency = function () {
   this._metaData.alpha = true;
 };
 
-ParserAsync.prototype._headersFinished = function() {
+ParserAsync.prototype._headersFinished = function () {
   // Up until this point, we don't know if we have a tRNS chunk (alpha)
   // so we can't emit metadata any earlier
-  this.emit('metadata', this._metaData);
+  this.emit("metadata", this._metaData);
 };
 
-ParserAsync.prototype._finished = function() {
+ParserAsync.prototype._finished = function () {
   if (this.errord) {
     return;
   }
 
   if (!this._inflate) {
-    this.emit('error', 'No Inflate block');
-  }
-  else {
+    this.emit("error", "No Inflate block");
+  } else {
     // no more data to inflate
     this._inflate.end();
   }
-  this.destroySoon();
 };
 
-ParserAsync.prototype._complete = function(filteredData) {
-
+ParserAsync.prototype._complete = function (filteredData) {
   if (this.errord) {
     return;
   }
 
-  try {
-    var bitmapData = bitmapper.dataToBitMap(filteredData, this._bitmapInfo);
+  let normalisedBitmapData;
 
-    var normalisedBitmapData = formatNormaliser(bitmapData, this._bitmapInfo);
+  try {
+    let bitmapData = bitmapper.dataToBitMap(filteredData, this._bitmapInfo);
+
+    normalisedBitmapData = formatNormaliser(bitmapData, this._bitmapInfo);
     bitmapData = null;
-  }
-  catch (ex) {
+  } catch (ex) {
     this._handleError(ex);
     return;
   }
 
-  this.emit('parsed', normalisedBitmapData);
+  this.emit("parsed", normalisedBitmapData);
 };
 
 
@@ -14425,31 +15082,31 @@ ParserAsync.prototype._complete = function(filteredData) {
 "use strict";
 
 
-var hasSyncZlib = true;
-var zlib = __nccwpck_require__(9796);
-var inflateSync = __nccwpck_require__(5331);
+let hasSyncZlib = true;
+let zlib = __nccwpck_require__(9796);
+let inflateSync = __nccwpck_require__(5331);
 if (!zlib.deflateSync) {
   hasSyncZlib = false;
 }
-var SyncReader = __nccwpck_require__(3652);
-var FilterSync = __nccwpck_require__(8505);
-var Parser = __nccwpck_require__(2225);
-var bitmapper = __nccwpck_require__(8054);
-var formatNormaliser = __nccwpck_require__(3928);
+let SyncReader = __nccwpck_require__(3652);
+let FilterSync = __nccwpck_require__(8505);
+let Parser = __nccwpck_require__(2225);
+let bitmapper = __nccwpck_require__(8054);
+let formatNormaliser = __nccwpck_require__(3928);
 
-
-module.exports = function(buffer, options) {
-
+module.exports = function (buffer, options) {
   if (!hasSyncZlib) {
-    throw new Error('To use the sync capability of this library in old node versions, please pin pngjs to v2.3.0');
+    throw new Error(
+      "To use the sync capability of this library in old node versions, please pin pngjs to v2.3.0"
+    );
   }
 
-  var err;
+  let err;
   function handleError(_err_) {
     err = _err_;
   }
 
-  var metaData;
+  let metaData;
   function handleMetaData(_metaData_) {
     metaData = _metaData_;
   }
@@ -14466,19 +15123,19 @@ module.exports = function(buffer, options) {
     metaData.alpha = true;
   }
 
-  var gamma;
+  let gamma;
   function handleGamma(_gamma_) {
     gamma = _gamma_;
   }
 
-  var inflateDataList = [];
+  let inflateDataList = [];
   function handleInflateData(inflatedData) {
     inflateDataList.push(inflatedData);
   }
 
-  var reader = new SyncReader(buffer);
+  let reader = new SyncReader(buffer);
 
-  var parser = new Parser(options, {
+  let parser = new Parser(options, {
     read: reader.read.bind(reader),
     error: handleError,
     metadata: handleMetaData,
@@ -14486,7 +15143,7 @@ module.exports = function(buffer, options) {
     palette: handlePalette,
     transColor: handleTransColor,
     inflateData: handleInflateData,
-    simpleTransparency: handleSimpleTransparency
+    simpleTransparency: handleSimpleTransparency,
   });
 
   parser.start();
@@ -14497,31 +15154,34 @@ module.exports = function(buffer, options) {
   }
 
   //join together the inflate datas
-  var inflateData = Buffer.concat(inflateDataList);
+  let inflateData = Buffer.concat(inflateDataList);
   inflateDataList.length = 0;
 
-  var inflatedData;
+  let inflatedData;
   if (metaData.interlace) {
     inflatedData = zlib.inflateSync(inflateData);
-  }
-  else {
-    var rowSize = ((metaData.width * metaData.bpp * metaData.depth + 7) >> 3) + 1;
-    var imageSize = rowSize * metaData.height;
-    inflatedData = inflateSync(inflateData, { chunkSize: imageSize, maxLength: imageSize });
+  } else {
+    let rowSize =
+      ((metaData.width * metaData.bpp * metaData.depth + 7) >> 3) + 1;
+    let imageSize = rowSize * metaData.height;
+    inflatedData = inflateSync(inflateData, {
+      chunkSize: imageSize,
+      maxLength: imageSize,
+    });
   }
   inflateData = null;
 
   if (!inflatedData || !inflatedData.length) {
-    throw new Error('bad png - invalid inflate data response');
+    throw new Error("bad png - invalid inflate data response");
   }
 
-  var unfilteredData = FilterSync.process(inflatedData, metaData);
+  let unfilteredData = FilterSync.process(inflatedData, metaData);
   inflateData = null;
 
-  var bitmapData = bitmapper.dataToBitMap(unfilteredData, metaData);
+  let bitmapData = bitmapper.dataToBitMap(unfilteredData, metaData);
   unfilteredData = null;
 
-  var normalisedBitmapData = formatNormaliser(bitmapData, metaData);
+  let normalisedBitmapData = formatNormaliser(bitmapData, metaData);
 
   metaData.data = normalisedBitmapData;
   metaData.gamma = gamma || 0;
@@ -14538,12 +15198,10 @@ module.exports = function(buffer, options) {
 "use strict";
 
 
-var constants = __nccwpck_require__(3316);
-var CrcCalculator = __nccwpck_require__(5987);
+let constants = __nccwpck_require__(3316);
+let CrcCalculator = __nccwpck_require__(5987);
 
-
-var Parser = module.exports = function(options, dependencies) {
-
+let Parser = (module.exports = function (options, dependencies) {
   this._options = options;
   options.checkCRC = options.checkCRC !== false;
 
@@ -14573,83 +15231,78 @@ var Parser = module.exports = function(options, dependencies) {
   this.inflateData = dependencies.inflateData;
   this.finished = dependencies.finished;
   this.simpleTransparency = dependencies.simpleTransparency;
-  this.headersFinished = dependencies.headersFinished || function() {};
+  this.headersFinished = dependencies.headersFinished || function () {};
+});
+
+Parser.prototype.start = function () {
+  this.read(constants.PNG_SIGNATURE.length, this._parseSignature.bind(this));
 };
 
-Parser.prototype.start = function() {
-  this.read(constants.PNG_SIGNATURE.length,
-    this._parseSignature.bind(this)
-  );
-};
+Parser.prototype._parseSignature = function (data) {
+  let signature = constants.PNG_SIGNATURE;
 
-Parser.prototype._parseSignature = function(data) {
-
-  var signature = constants.PNG_SIGNATURE;
-
-  for (var i = 0; i < signature.length; i++) {
+  for (let i = 0; i < signature.length; i++) {
     if (data[i] !== signature[i]) {
-      this.error(new Error('Invalid file signature'));
+      this.error(new Error("Invalid file signature"));
       return;
     }
   }
   this.read(8, this._parseChunkBegin.bind(this));
 };
 
-Parser.prototype._parseChunkBegin = function(data) {
-
+Parser.prototype._parseChunkBegin = function (data) {
   // chunk content length
-  var length = data.readUInt32BE(0);
+  let length = data.readUInt32BE(0);
 
   // chunk type
-  var type = data.readUInt32BE(4);
-  var name = '';
-  for (var i = 4; i < 8; i++) {
+  let type = data.readUInt32BE(4);
+  let name = "";
+  for (let i = 4; i < 8; i++) {
     name += String.fromCharCode(data[i]);
   }
 
   //console.log('chunk ', name, length);
 
   // chunk flags
-  var ancillary = Boolean(data[4] & 0x20); // or critical
+  let ancillary = Boolean(data[4] & 0x20); // or critical
   //    priv = Boolean(data[5] & 0x20), // or public
   //    safeToCopy = Boolean(data[7] & 0x20); // or unsafe
 
   if (!this._hasIHDR && type !== constants.TYPE_IHDR) {
-    this.error(new Error('Expected IHDR on beggining'));
+    this.error(new Error("Expected IHDR on beggining"));
     return;
   }
 
   this._crc = new CrcCalculator();
-  this._crc.write(new Buffer(name));
+  this._crc.write(Buffer.from(name));
 
   if (this._chunks[type]) {
     return this._chunks[type](length);
   }
 
   if (!ancillary) {
-    this.error(new Error('Unsupported critical chunk type ' + name));
+    this.error(new Error("Unsupported critical chunk type " + name));
     return;
   }
 
   this.read(length + 4, this._skipChunk.bind(this));
 };
 
-Parser.prototype._skipChunk = function(/*data*/) {
+Parser.prototype._skipChunk = function (/*data*/) {
   this.read(8, this._parseChunkBegin.bind(this));
 };
 
-Parser.prototype._handleChunkEnd = function() {
+Parser.prototype._handleChunkEnd = function () {
   this.read(4, this._parseChunkEnd.bind(this));
 };
 
-Parser.prototype._parseChunkEnd = function(data) {
-
-  var fileCrc = data.readInt32BE(0);
-  var calcCrc = this._crc.crc32();
+Parser.prototype._parseChunkEnd = function (data) {
+  let fileCrc = data.readInt32BE(0);
+  let calcCrc = this._crc.crc32();
 
   // check CRC
   if (this._options.checkCRC && calcCrc !== fileCrc) {
-    this.error(new Error('Crc error - ' + fileCrc + ' - ' + calcCrc));
+    this.error(new Error("Crc error - " + fileCrc + " - " + calcCrc));
     return;
   }
 
@@ -14658,50 +15311,55 @@ Parser.prototype._parseChunkEnd = function(data) {
   }
 };
 
-Parser.prototype._handleIHDR = function(length) {
+Parser.prototype._handleIHDR = function (length) {
   this.read(length, this._parseIHDR.bind(this));
 };
-Parser.prototype._parseIHDR = function(data) {
-
+Parser.prototype._parseIHDR = function (data) {
   this._crc.write(data);
 
-  var width = data.readUInt32BE(0);
-  var height = data.readUInt32BE(4);
-  var depth = data[8];
-  var colorType = data[9]; // bits: 1 palette, 2 color, 4 alpha
-  var compr = data[10];
-  var filter = data[11];
-  var interlace = data[12];
+  let width = data.readUInt32BE(0);
+  let height = data.readUInt32BE(4);
+  let depth = data[8];
+  let colorType = data[9]; // bits: 1 palette, 2 color, 4 alpha
+  let compr = data[10];
+  let filter = data[11];
+  let interlace = data[12];
 
   // console.log('    width', width, 'height', height,
   //     'depth', depth, 'colorType', colorType,
   //     'compr', compr, 'filter', filter, 'interlace', interlace
   // );
 
-  if (depth !== 8 && depth !== 4 && depth !== 2 && depth !== 1 && depth !== 16) {
-    this.error(new Error('Unsupported bit depth ' + depth));
+  if (
+    depth !== 8 &&
+    depth !== 4 &&
+    depth !== 2 &&
+    depth !== 1 &&
+    depth !== 16
+  ) {
+    this.error(new Error("Unsupported bit depth " + depth));
     return;
   }
   if (!(colorType in constants.COLORTYPE_TO_BPP_MAP)) {
-    this.error(new Error('Unsupported color type'));
+    this.error(new Error("Unsupported color type"));
     return;
   }
   if (compr !== 0) {
-    this.error(new Error('Unsupported compression method'));
+    this.error(new Error("Unsupported compression method"));
     return;
   }
   if (filter !== 0) {
-    this.error(new Error('Unsupported filter method'));
+    this.error(new Error("Unsupported filter method"));
     return;
   }
   if (interlace !== 0 && interlace !== 1) {
-    this.error(new Error('Unsupported interlace method'));
+    this.error(new Error("Unsupported interlace method"));
     return;
   }
 
   this._colorType = colorType;
 
-  var bpp = constants.COLORTYPE_TO_BPP_MAP[this._colorType];
+  let bpp = constants.COLORTYPE_TO_BPP_MAP[this._colorType];
 
   this._hasIHDR = true;
 
@@ -14714,30 +15372,23 @@ Parser.prototype._parseIHDR = function(data) {
     color: Boolean(colorType & constants.COLORTYPE_COLOR),
     alpha: Boolean(colorType & constants.COLORTYPE_ALPHA),
     bpp: bpp,
-    colorType: colorType
+    colorType: colorType,
   });
 
   this._handleChunkEnd();
 };
 
-
-Parser.prototype._handlePLTE = function(length) {
+Parser.prototype._handlePLTE = function (length) {
   this.read(length, this._parsePLTE.bind(this));
 };
-Parser.prototype._parsePLTE = function(data) {
-
+Parser.prototype._parsePLTE = function (data) {
   this._crc.write(data);
 
-  var entries = Math.floor(data.length / 3);
+  let entries = Math.floor(data.length / 3);
   // console.log('Palette:', entries);
 
-  for (var i = 0; i < entries; i++) {
-    this._palette.push([
-      data[i * 3],
-      data[i * 3 + 1],
-      data[i * 3 + 2],
-      0xff
-    ]);
+  for (let i = 0; i < entries; i++) {
+    this._palette.push([data[i * 3], data[i * 3 + 1], data[i * 3 + 2], 0xff]);
   }
 
   this.palette(this._palette);
@@ -14745,25 +15396,24 @@ Parser.prototype._parsePLTE = function(data) {
   this._handleChunkEnd();
 };
 
-Parser.prototype._handleTRNS = function(length) {
+Parser.prototype._handleTRNS = function (length) {
   this.simpleTransparency();
   this.read(length, this._parseTRNS.bind(this));
 };
-Parser.prototype._parseTRNS = function(data) {
-
+Parser.prototype._parseTRNS = function (data) {
   this._crc.write(data);
 
   // palette
   if (this._colorType === constants.COLORTYPE_PALETTE_COLOR) {
     if (this._palette.length === 0) {
-      this.error(new Error('Transparency chunk must be after palette'));
+      this.error(new Error("Transparency chunk must be after palette"));
       return;
     }
     if (data.length > this._palette.length) {
-      this.error(new Error('More transparent colors than palette size'));
+      this.error(new Error("More transparent colors than palette size"));
       return;
     }
-    for (var i = 0; i < data.length; i++) {
+    for (let i = 0; i < data.length; i++) {
       this._palette[i][3] = data[i];
     }
     this.palette(this._palette);
@@ -14776,54 +15426,57 @@ Parser.prototype._parseTRNS = function(data) {
     this.transColor([data.readUInt16BE(0)]);
   }
   if (this._colorType === constants.COLORTYPE_COLOR) {
-    this.transColor([data.readUInt16BE(0), data.readUInt16BE(2), data.readUInt16BE(4)]);
+    this.transColor([
+      data.readUInt16BE(0),
+      data.readUInt16BE(2),
+      data.readUInt16BE(4),
+    ]);
   }
 
   this._handleChunkEnd();
 };
 
-Parser.prototype._handleGAMA = function(length) {
+Parser.prototype._handleGAMA = function (length) {
   this.read(length, this._parseGAMA.bind(this));
 };
-Parser.prototype._parseGAMA = function(data) {
-
+Parser.prototype._parseGAMA = function (data) {
   this._crc.write(data);
   this.gamma(data.readUInt32BE(0) / constants.GAMMA_DIVISION);
 
   this._handleChunkEnd();
 };
 
-Parser.prototype._handleIDAT = function(length) {
+Parser.prototype._handleIDAT = function (length) {
   if (!this._emittedHeadersFinished) {
     this._emittedHeadersFinished = true;
     this.headersFinished();
   }
   this.read(-length, this._parseIDAT.bind(this, length));
 };
-Parser.prototype._parseIDAT = function(length, data) {
-
+Parser.prototype._parseIDAT = function (length, data) {
   this._crc.write(data);
 
-  if (this._colorType === constants.COLORTYPE_PALETTE_COLOR && this._palette.length === 0) {
-    throw new Error('Expected palette not found');
+  if (
+    this._colorType === constants.COLORTYPE_PALETTE_COLOR &&
+    this._palette.length === 0
+  ) {
+    throw new Error("Expected palette not found");
   }
 
   this.inflateData(data);
-  var leftOverLength = length - data.length;
+  let leftOverLength = length - data.length;
 
   if (leftOverLength > 0) {
     this._handleIDAT(leftOverLength);
-  }
-  else {
+  } else {
     this._handleChunkEnd();
   }
 };
 
-Parser.prototype._handleIEND = function(length) {
+Parser.prototype._handleIEND = function (length) {
   this.read(length, this._parseIEND.bind(this));
 };
-Parser.prototype._parseIEND = function(data) {
-
+Parser.prototype._parseIEND = function (data) {
   this._crc.write(data);
 
   this._hasIEND = true;
@@ -14843,18 +15496,14 @@ Parser.prototype._parseIEND = function(data) {
 "use strict";
 
 
+let parse = __nccwpck_require__(29);
+let pack = __nccwpck_require__(7100);
 
-var parse = __nccwpck_require__(29);
-var pack = __nccwpck_require__(7100);
-
-
-exports.read = function(buffer, options) {
-
+exports.read = function (buffer, options) {
   return parse(buffer, options || {});
 };
 
-exports.write = function(png, options) {
-
+exports.write = function (png, options) {
   return pack(png, options);
 };
 
@@ -14867,14 +15516,13 @@ exports.write = function(png, options) {
 "use strict";
 
 
-var util = __nccwpck_require__(3837);
-var Stream = __nccwpck_require__(2781);
-var Parser = __nccwpck_require__(699);
-var Packer = __nccwpck_require__(2584);
-var PNGSync = __nccwpck_require__(1436);
+let util = __nccwpck_require__(3837);
+let Stream = __nccwpck_require__(2781);
+let Parser = __nccwpck_require__(699);
+let Packer = __nccwpck_require__(2584);
+let PNGSync = __nccwpck_require__(1436);
 
-
-var PNG = exports.y = function(options) {
+let PNG = (exports.y = function (options) {
   Stream.call(this);
 
   options = options || {}; // eslint-disable-line no-param-reassign
@@ -14883,8 +15531,10 @@ var PNG = exports.y = function(options) {
   this.width = options.width | 0;
   this.height = options.height | 0;
 
-  this.data = this.width > 0 && this.height > 0 ?
-    new Buffer(4 * this.width * this.height) : null;
+  this.data =
+    this.width > 0 && this.height > 0
+      ? Buffer.alloc(4 * this.width * this.height)
+      : null;
 
   if (options.fill && this.data) {
     this.data.fill(0);
@@ -14895,95 +15545,96 @@ var PNG = exports.y = function(options) {
 
   this._parser = new Parser(options);
 
-  this._parser.on('error', this.emit.bind(this, 'error'));
-  this._parser.on('close', this._handleClose.bind(this));
-  this._parser.on('metadata', this._metadata.bind(this));
-  this._parser.on('gamma', this._gamma.bind(this));
-  this._parser.on('parsed', function(data) {
-    this.data = data;
-    this.emit('parsed', data);
-  }.bind(this));
+  this._parser.on("error", this.emit.bind(this, "error"));
+  this._parser.on("close", this._handleClose.bind(this));
+  this._parser.on("metadata", this._metadata.bind(this));
+  this._parser.on("gamma", this._gamma.bind(this));
+  this._parser.on(
+    "parsed",
+    function (data) {
+      this.data = data;
+      this.emit("parsed", data);
+    }.bind(this)
+  );
 
   this._packer = new Packer(options);
-  this._packer.on('data', this.emit.bind(this, 'data'));
-  this._packer.on('end', this.emit.bind(this, 'end'));
-  this._parser.on('close', this._handleClose.bind(this));
-  this._packer.on('error', this.emit.bind(this, 'error'));
-
-};
+  this._packer.on("data", this.emit.bind(this, "data"));
+  this._packer.on("end", this.emit.bind(this, "end"));
+  this._parser.on("close", this._handleClose.bind(this));
+  this._packer.on("error", this.emit.bind(this, "error"));
+});
 util.inherits(PNG, Stream);
 
 PNG.sync = PNGSync;
 
-PNG.prototype.pack = function() {
-
+PNG.prototype.pack = function () {
   if (!this.data || !this.data.length) {
-    this.emit('error', 'No data provided');
+    this.emit("error", "No data provided");
     return this;
   }
 
-  process.nextTick(function() {
-    this._packer.pack(this.data, this.width, this.height, this.gamma);
-  }.bind(this));
+  process.nextTick(
+    function () {
+      this._packer.pack(this.data, this.width, this.height, this.gamma);
+    }.bind(this)
+  );
 
   return this;
 };
 
-
-PNG.prototype.parse = function(data, callback) {
-
+PNG.prototype.parse = function (data, callback) {
   if (callback) {
-    var onParsed, onError;
+    let onParsed, onError;
 
-    onParsed = function(parsedData) {
-      this.removeListener('error', onError);
+    onParsed = function (parsedData) {
+      this.removeListener("error", onError);
 
       this.data = parsedData;
       callback(null, this);
     }.bind(this);
 
-    onError = function(err) {
-      this.removeListener('parsed', onParsed);
+    onError = function (err) {
+      this.removeListener("parsed", onParsed);
 
       callback(err, null);
     }.bind(this);
 
-    this.once('parsed', onParsed);
-    this.once('error', onError);
+    this.once("parsed", onParsed);
+    this.once("error", onError);
   }
 
   this.end(data);
   return this;
 };
 
-PNG.prototype.write = function(data) {
+PNG.prototype.write = function (data) {
   this._parser.write(data);
   return true;
 };
 
-PNG.prototype.end = function(data) {
+PNG.prototype.end = function (data) {
   this._parser.end(data);
 };
 
-PNG.prototype._metadata = function(metadata) {
+PNG.prototype._metadata = function (metadata) {
   this.width = metadata.width;
   this.height = metadata.height;
 
-  this.emit('metadata', metadata);
+  this.emit("metadata", metadata);
 };
 
-PNG.prototype._gamma = function(gamma) {
+PNG.prototype._gamma = function (gamma) {
   this.gamma = gamma;
 };
 
-PNG.prototype._handleClose = function() {
+PNG.prototype._handleClose = function () {
   if (!this._parser.writable && !this._packer.readable) {
-    this.emit('close');
+    this.emit("close");
   }
 };
 
-
-PNG.bitblt = function(src, dst, srcX, srcY, width, height, deltaX, deltaY) { // eslint-disable-line max-params
+PNG.bitblt = function (src, dst, srcX, srcY, width, height, deltaX, deltaY) {
+  // eslint-disable-line max-params
   // coerce pixel dimensions to integers (also coerces undefined -> 0):
   /* eslint-disable no-param-reassign */
   srcX |= 0;
@@ -14994,16 +15645,27 @@ PNG.bitblt = function(src, dst, srcX, srcY, width, height, deltaX, deltaY) { // 
   deltaY |= 0;
   /* eslint-enable no-param-reassign */
 
-  if (srcX > src.width || srcY > src.height || srcX + width > src.width || srcY + height > src.height) {
-    throw new Error('bitblt reading outside image');
+  if (
+    srcX > src.width ||
+    srcY > src.height ||
+    srcX + width > src.width ||
+    srcY + height > src.height
+  ) {
+    throw new Error("bitblt reading outside image");
   }
 
-  if (deltaX > dst.width || deltaY > dst.height || deltaX + width > dst.width || deltaY + height > dst.height) {
-    throw new Error('bitblt writing outside image');
+  if (
+    deltaX > dst.width ||
+    deltaY > dst.height ||
+    deltaX + width > dst.width ||
+    deltaY + height > dst.height
+  ) {
+    throw new Error("bitblt writing outside image");
   }
 
-  for (var y = 0; y < height; y++) {
-    src.data.copy(dst.data,
+  for (let y = 0; y < height; y++) {
+    src.data.copy(
+      dst.data,
       ((deltaY + y) * dst.width + deltaX) << 2,
       ((srcY + y) * src.width + srcX) << 2,
       ((srcY + y) * src.width + srcX + width) << 2
@@ -15011,21 +15673,29 @@ PNG.bitblt = function(src, dst, srcX, srcY, width, height, deltaX, deltaY) { // 
   }
 };
 
-
-PNG.prototype.bitblt = function(dst, srcX, srcY, width, height, deltaX, deltaY) { // eslint-disable-line max-params
+PNG.prototype.bitblt = function (
+  dst,
+  srcX,
+  srcY,
+  width,
+  height,
+  deltaX,
+  deltaY
+) {
+  // eslint-disable-line max-params
 
   PNG.bitblt(this, dst, srcX, srcY, width, height, deltaX, deltaY);
   return this;
 };
 
-PNG.adjustGamma = function(src) {
+PNG.adjustGamma = function (src) {
   if (src.gamma) {
-    for (var y = 0; y < src.height; y++) {
-      for (var x = 0; x < src.width; x++) {
-        var idx = (src.width * y + x) << 2;
+    for (let y = 0; y < src.height; y++) {
+      for (let x = 0; x < src.width; x++) {
+        let idx = (src.width * y + x) << 2;
 
-        for (var i = 0; i < 3; i++) {
-          var sample = src.data[idx + i] / 255;
+        for (let i = 0; i < 3; i++) {
+          let sample = src.data[idx + i] / 255;
           sample = Math.pow(sample, 1 / 2.2 / src.gamma);
           src.data[idx + i] = Math.round(sample * 255);
         }
@@ -15035,7 +15705,7 @@ PNG.adjustGamma = function(src) {
   }
 };
 
-PNG.prototype.adjustGamma = function() {
+PNG.prototype.adjustGamma = function () {
   PNG.adjustGamma(this);
 };
 
@@ -15048,11 +15718,11 @@ PNG.prototype.adjustGamma = function() {
 "use strict";
 
 
-var assert = (__nccwpck_require__(9491).ok);
-var zlib = __nccwpck_require__(9796);
-var util = __nccwpck_require__(3837);
+let assert = (__nccwpck_require__(9491).ok);
+let zlib = __nccwpck_require__(9796);
+let util = __nccwpck_require__(3837);
 
-var kMaxLength = (__nccwpck_require__(4300).kMaxLength);
+let kMaxLength = (__nccwpck_require__(4300).kMaxLength);
 
 function Inflate(opts) {
   if (!(this instanceof Inflate)) {
@@ -15092,23 +15762,23 @@ function _close(engine, callback) {
   engine._handle = null;
 }
 
-Inflate.prototype._processChunk = function(chunk, flushFlag, asyncCb) {
-  if (typeof asyncCb === 'function') {
+Inflate.prototype._processChunk = function (chunk, flushFlag, asyncCb) {
+  if (typeof asyncCb === "function") {
     return zlib.Inflate._processChunk.call(this, chunk, flushFlag, asyncCb);
   }
 
-  var self = this;
+  let self = this;
 
-  var availInBefore = chunk && chunk.length;
-  var availOutBefore = this._chunkSize - this._offset;
-  var leftToInflate = this._maxLength;
-  var inOff = 0;
+  let availInBefore = chunk && chunk.length;
+  let availOutBefore = this._chunkSize - this._offset;
+  let leftToInflate = this._maxLength;
+  let inOff = 0;
 
-  var buffers = [];
-  var nread = 0;
+  let buffers = [];
+  let nread = 0;
 
-  var error;
-  this.on('error', function(err) {
+  let error;
+  this.on("error", function (err) {
     error = err;
   });
 
@@ -15117,11 +15787,11 @@ Inflate.prototype._processChunk = function(chunk, flushFlag, asyncCb) {
       return;
     }
 
-    var have = availOutBefore - availOutAfter;
-    assert(have >= 0, 'have should not go down');
+    let have = availOutBefore - availOutAfter;
+    assert(have >= 0, "have should not go down");
 
     if (have > 0) {
-      var out = self._buffer.slice(self._offset, self._offset + have);
+      let out = self._buffer.slice(self._offset, self._offset + have);
       self._offset += have;
 
       if (out.length > leftToInflate) {
@@ -15144,7 +15814,7 @@ Inflate.prototype._processChunk = function(chunk, flushFlag, asyncCb) {
     }
 
     if (availOutAfter === 0) {
-      inOff += (availInBefore - availInAfter);
+      inOff += availInBefore - availInAfter;
       availInBefore = availInAfter;
 
       return true;
@@ -15153,15 +15823,18 @@ Inflate.prototype._processChunk = function(chunk, flushFlag, asyncCb) {
     return false;
   }
 
-  assert(this._handle, 'zlib binding closed');
+  assert(this._handle, "zlib binding closed");
+  let res;
   do {
-    var res = this._handle.writeSync(flushFlag,
+    res = this._handle.writeSync(
+      flushFlag,
       chunk, // in
       inOff, // in_off
       availInBefore, // in_len
       this._buffer, // out
       this._offset, //out_off
-      availOutBefore); // out_len
+      availOutBefore
+    ); // out_len
     // Node 8 --> 9 compatibility check
     res = res || this._writeState;
   } while (!this._hadError && handleChunk(res[0], res[1]));
@@ -15172,10 +15845,14 @@ Inflate.prototype._processChunk = function(chunk, flushFlag, asyncCb) {
 
   if (nread >= kMaxLength) {
     _close(this);
-    throw new RangeError('Cannot create final Buffer. It would be larger than 0x' + kMaxLength.toString(16) + ' bytes');
+    throw new RangeError(
+      "Cannot create final Buffer. It would be larger than 0x" +
+        kMaxLength.toString(16) +
+        " bytes"
+    );
   }
 
-  var buf = Buffer.concat(buffers, nread);
+  let buf = Buffer.concat(buffers, nread);
   _close(this);
 
   return buf;
@@ -15184,14 +15861,14 @@ Inflate.prototype._processChunk = function(chunk, flushFlag, asyncCb) {
 util.inherits(Inflate, zlib.Inflate);
 
 function zlibBufferSync(engine, buffer) {
-  if (typeof buffer === 'string') {
+  if (typeof buffer === "string") {
     buffer = Buffer.from(buffer);
   }
   if (!(buffer instanceof Buffer)) {
-    throw new TypeError('Not a string or buffer');
+    throw new TypeError("Not a string or buffer");
   }
 
-  var flushFlag = engine._finishFlushFlag;
+  let flushFlag = engine._finishFlushFlag;
   if (flushFlag == null) {
     flushFlag = zlib.Z_FINISH;
   }
@@ -15217,54 +15894,48 @@ exports.inflateSync = inflateSync;
 "use strict";
 
 
-var SyncReader = module.exports = function(buffer) {
-
+let SyncReader = (module.exports = function (buffer) {
   this._buffer = buffer;
   this._reads = [];
-};
+});
 
-SyncReader.prototype.read = function(length, callback) {
-
+SyncReader.prototype.read = function (length, callback) {
   this._reads.push({
     length: Math.abs(length), // if length < 0 then at most this length
     allowLess: length < 0,
-    func: callback
+    func: callback,
   });
 };
 
-SyncReader.prototype.process = function() {
-
+SyncReader.prototype.process = function () {
   // as long as there is any data and read requests
   while (this._reads.length > 0 && this._buffer.length) {
+    let read = this._reads[0];
 
-    var read = this._reads[0];
-
-    if (this._buffer.length && (this._buffer.length >= read.length || read.allowLess)) {
-
+    if (
+      this._buffer.length &&
+      (this._buffer.length >= read.length || read.allowLess)
+    ) {
       // ok there is any data so that we can satisfy this request
       this._reads.shift(); // == read
 
-      var buf = this._buffer;
+      let buf = this._buffer;
 
       this._buffer = buf.slice(read.length);
 
       read.func.call(this, buf.slice(0, read.length));
-
-    }
-    else {
+    } else {
       break;
     }
-
   }
 
   if (this._reads.length > 0) {
-    return new Error('There are some read requests waitng on finished stream');
+    return new Error("There are some read requests waitng on finished stream");
   }
 
   if (this._buffer.length > 0) {
-    return new Error('unrecognised content at end of stream');
+    return new Error("unrecognised content at end of stream");
   }
-
 };
 
 
@@ -15275,16 +15946,16 @@ SyncReader.prototype.process = function() {
 
 var __webpack_unused_export__;
 
-var canPromise = __nccwpck_require__(7311)
+const canPromise = __nccwpck_require__(7311)
 
-var QRCode = __nccwpck_require__(6883)
-var CanvasRenderer = __nccwpck_require__(4275)
-var SvgRenderer = __nccwpck_require__(516)
+const QRCode = __nccwpck_require__(6883)
+const CanvasRenderer = __nccwpck_require__(4275)
+const SvgRenderer = __nccwpck_require__(516)
 
 function renderCanvas (renderFunc, canvas, text, opts, cb) {
-  var args = [].slice.call(arguments, 1)
-  var argsNum = args.length
-  var isLastArgCb = typeof args[argsNum - 1] === 'function'
+  const args = [].slice.call(arguments, 1)
+  const argsNum = args.length
+  const isLastArgCb = typeof args[argsNum - 1] === 'function'
 
   if (!isLastArgCb && !canPromise()) {
     throw new Error('Callback required as last argument')
@@ -15326,7 +15997,7 @@ function renderCanvas (renderFunc, canvas, text, opts, cb) {
 
     return new Promise(function (resolve, reject) {
       try {
-        var data = QRCode.create(text, opts)
+        const data = QRCode.create(text, opts)
         resolve(renderFunc(data, canvas, opts))
       } catch (e) {
         reject(e)
@@ -15335,7 +16006,7 @@ function renderCanvas (renderFunc, canvas, text, opts, cb) {
   }
 
   try {
-    var data = QRCode.create(text, opts)
+    const data = QRCode.create(text, opts)
     cb(null, renderFunc(data, canvas, opts))
   } catch (e) {
     cb(e)
@@ -15381,7 +16052,7 @@ module.exports = function () {
  * and their number depends on the symbol version.
  */
 
-var getSymbolSize = (__nccwpck_require__(5018).getSymbolSize)
+const getSymbolSize = (__nccwpck_require__(5018).getSymbolSize)
 
 /**
  * Calculate the row/column coordinates of the center module of each alignment pattern
@@ -15400,12 +16071,12 @@ var getSymbolSize = (__nccwpck_require__(5018).getSymbolSize)
 exports.getRowColCoords = function getRowColCoords (version) {
   if (version === 1) return []
 
-  var posCount = Math.floor(version / 7) + 2
-  var size = getSymbolSize(version)
-  var intervals = size === 145 ? 26 : Math.ceil((size - 13) / (2 * posCount - 2)) * 2
-  var positions = [size - 7] // Last coord is always (size - 7)
+  const posCount = Math.floor(version / 7) + 2
+  const size = getSymbolSize(version)
+  const intervals = size === 145 ? 26 : Math.ceil((size - 13) / (2 * posCount - 2)) * 2
+  const positions = [size - 7] // Last coord is always (size - 7)
 
-  for (var i = 1; i < posCount - 1; i++) {
+  for (let i = 1; i < posCount - 1; i++) {
     positions[i] = positions[i - 1] - intervals
   }
 
@@ -15428,21 +16099,21 @@ exports.getRowColCoords = function getRowColCoords (version) {
  * Note that the coordinates (6,6), (6,38), (38,6) are occupied by finder patterns
  * and are not therefore used for alignment patterns.
  *
- * var pos = getPositions(7)
+ * let pos = getPositions(7)
  * // [[6,22], [22,6], [22,22], [22,38], [38,22], [38,38]]
  *
  * @param  {Number} version QR Code version
  * @return {Array}          Array of coordinates
  */
 exports.getPositions = function getPositions (version) {
-  var coords = []
-  var pos = exports.getRowColCoords(version)
-  var posLength = pos.length
+  const coords = []
+  const pos = exports.getRowColCoords(version)
+  const posLength = pos.length
 
-  for (var i = 0; i < posLength; i++) {
-    for (var j = 0; j < posLength; j++) {
+  for (let i = 0; i < posLength; i++) {
+    for (let j = 0; j < posLength; j++) {
       // Skip if position is occupied by finder patterns
-      if ((i === 0 && j === 0) ||             // top-left
+      if ((i === 0 && j === 0) || // top-left
           (i === 0 && j === posLength - 1) || // bottom-left
           (i === posLength - 1 && j === 0)) { // top-right
         continue
@@ -15461,7 +16132,7 @@ exports.getPositions = function getPositions (version) {
 /***/ 4137:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-var Mode = __nccwpck_require__(4373)
+const Mode = __nccwpck_require__(4373)
 
 /**
  * Array of characters available in alphanumeric mode
@@ -15472,7 +16143,7 @@ var Mode = __nccwpck_require__(4373)
  *
  * @type {Array}
  */
-var ALPHA_NUM_CHARS = [
+const ALPHA_NUM_CHARS = [
   '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
   'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
@@ -15497,13 +16168,13 @@ AlphanumericData.prototype.getBitsLength = function getBitsLength () {
 }
 
 AlphanumericData.prototype.write = function write (bitBuffer) {
-  var i
+  let i
 
   // Input data characters are divided into groups of two characters
   // and encoded as 11-bit binary codes.
   for (i = 0; i + 2 <= this.data.length; i += 2) {
     // The character value of the first character is multiplied by 45
-    var value = ALPHA_NUM_CHARS.indexOf(this.data[i]) * 45
+    let value = ALPHA_NUM_CHARS.indexOf(this.data[i]) * 45
 
     // The character value of the second digit is added to the product
     value += ALPHA_NUM_CHARS.indexOf(this.data[i + 1])
@@ -15535,12 +16206,12 @@ function BitBuffer () {
 BitBuffer.prototype = {
 
   get: function (index) {
-    var bufIndex = Math.floor(index / 8)
+    const bufIndex = Math.floor(index / 8)
     return ((this.buffer[bufIndex] >>> (7 - index % 8)) & 1) === 1
   },
 
   put: function (num, length) {
-    for (var i = 0; i < length; i++) {
+    for (let i = 0; i < length; i++) {
       this.putBit(((num >>> (length - i - 1)) & 1) === 1)
     }
   },
@@ -15550,7 +16221,7 @@ BitBuffer.prototype = {
   },
 
   putBit: function (bit) {
-    var bufIndex = Math.floor(this.length / 8)
+    const bufIndex = Math.floor(this.length / 8)
     if (this.buffer.length <= bufIndex) {
       this.buffer.push(0)
     }
@@ -15569,9 +16240,7 @@ module.exports = BitBuffer
 /***/ }),
 
 /***/ 2270:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-var Buffer = __nccwpck_require__(5693)
+/***/ ((module) => {
 
 /**
  * Helper class to handle QR Code symbol modules
@@ -15584,10 +16253,8 @@ function BitMatrix (size) {
   }
 
   this.size = size
-  this.data = new Buffer(size * size)
-  this.data.fill(0)
-  this.reservedBit = new Buffer(size * size)
-  this.reservedBit.fill(0)
+  this.data = new Uint8Array(size * size)
+  this.reservedBit = new Uint8Array(size * size)
 }
 
 /**
@@ -15600,7 +16267,7 @@ function BitMatrix (size) {
  * @param {Boolean} reserved
  */
 BitMatrix.prototype.set = function (row, col, value, reserved) {
-  var index = row * this.size + col
+  const index = row * this.size + col
   this.data[index] = value
   if (reserved) this.reservedBit[index] = true
 }
@@ -15647,12 +16314,15 @@ module.exports = BitMatrix
 /***/ 5456:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-var Buffer = __nccwpck_require__(5693)
-var Mode = __nccwpck_require__(4373)
+const encodeUtf8 = __nccwpck_require__(682)
+const Mode = __nccwpck_require__(4373)
 
 function ByteData (data) {
   this.mode = Mode.BYTE
-  this.data = new Buffer(data)
+  if (typeof (data) === 'string') {
+    data = encodeUtf8(data)
+  }
+  this.data = new Uint8Array(data)
 }
 
 ByteData.getBitsLength = function getBitsLength (length) {
@@ -15668,7 +16338,7 @@ ByteData.prototype.getBitsLength = function getBitsLength () {
 }
 
 ByteData.prototype.write = function (bitBuffer) {
-  for (var i = 0, l = this.data.length; i < l; i++) {
+  for (let i = 0, l = this.data.length; i < l; i++) {
     bitBuffer.put(this.data[i], 8)
   }
 }
@@ -15681,9 +16351,9 @@ module.exports = ByteData
 /***/ 3891:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-var ECLevel = __nccwpck_require__(7161)
+const ECLevel = __nccwpck_require__(7161)
 
-var EC_BLOCKS_TABLE = [
+const EC_BLOCKS_TABLE = [
 // L  M  Q  H
   1, 1, 1, 1,
   1, 1, 1, 1,
@@ -15727,7 +16397,7 @@ var EC_BLOCKS_TABLE = [
   25, 49, 68, 81
 ]
 
-var EC_CODEWORDS_TABLE = [
+const EC_CODEWORDS_TABLE = [
 // L  M  Q  H
   7, 10, 13, 17,
   10, 16, 22, 28,
@@ -15833,7 +16503,7 @@ function fromString (string) {
     throw new Error('Param is not a string')
   }
 
-  var lcStr = string.toLowerCase()
+  const lcStr = string.toLowerCase()
 
   switch (lcStr) {
     case 'l':
@@ -15880,8 +16550,8 @@ exports.from = function from (value, defaultValue) {
 /***/ 4580:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-var getSymbolSize = (__nccwpck_require__(5018).getSymbolSize)
-var FINDER_PATTERN_SIZE = 7
+const getSymbolSize = (__nccwpck_require__(5018).getSymbolSize)
+const FINDER_PATTERN_SIZE = 7
 
 /**
  * Returns an array containing the positions of each finder pattern.
@@ -15891,7 +16561,7 @@ var FINDER_PATTERN_SIZE = 7
  * @return {Array}          Array of coordinates
  */
 exports.getPositions = function getPositions (version) {
-  var size = getSymbolSize(version)
+  const size = getSymbolSize(version)
 
   return [
     // top-left
@@ -15909,11 +16579,11 @@ exports.getPositions = function getPositions (version) {
 /***/ 3307:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-var Utils = __nccwpck_require__(5018)
+const Utils = __nccwpck_require__(5018)
 
-var G15 = (1 << 10) | (1 << 8) | (1 << 5) | (1 << 4) | (1 << 2) | (1 << 1) | (1 << 0)
-var G15_MASK = (1 << 14) | (1 << 12) | (1 << 10) | (1 << 4) | (1 << 1)
-var G15_BCH = Utils.getBCHDigit(G15)
+const G15 = (1 << 10) | (1 << 8) | (1 << 5) | (1 << 4) | (1 << 2) | (1 << 1) | (1 << 0)
+const G15_MASK = (1 << 14) | (1 << 12) | (1 << 10) | (1 << 4) | (1 << 1)
+const G15_BCH = Utils.getBCHDigit(G15)
 
 /**
  * Returns format information with relative error correction bits
@@ -15926,8 +16596,8 @@ var G15_BCH = Utils.getBCHDigit(G15)
  * @return {Number}                      Encoded format information bits
  */
 exports.getEncodedBits = function getEncodedBits (errorCorrectionLevel, mask) {
-  var data = ((errorCorrectionLevel.bit << 3) | mask)
-  var d = data << 10
+  const data = ((errorCorrectionLevel.bit << 3) | mask)
+  let d = data << 10
 
   while (Utils.getBCHDigit(d) - G15_BCH >= 0) {
     d ^= (G15 << (Utils.getBCHDigit(d) - G15_BCH))
@@ -15943,13 +16613,10 @@ exports.getEncodedBits = function getEncodedBits (errorCorrectionLevel, mask) {
 /***/ }),
 
 /***/ 6946:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((__unused_webpack_module, exports) => {
 
-var Buffer = __nccwpck_require__(5693)
-
-var EXP_TABLE = new Buffer(512)
-var LOG_TABLE = new Buffer(256)
-
+const EXP_TABLE = new Uint8Array(512)
+const LOG_TABLE = new Uint8Array(256)
 /**
  * Precompute the log and anti-log tables for faster computation later
  *
@@ -15959,8 +16626,8 @@ var LOG_TABLE = new Buffer(256)
  * ref {@link https://en.wikiversity.org/wiki/Reed%E2%80%93Solomon_codes_for_coders#Introduction_to_mathematical_fields}
  */
 ;(function initTables () {
-  var x = 1
-  for (var i = 0; i < 255; i++) {
+  let x = 1
+  for (let i = 0; i < 255; i++) {
     EXP_TABLE[i] = x
     LOG_TABLE[x] = i
 
@@ -15977,7 +16644,7 @@ var LOG_TABLE = new Buffer(256)
   // stay inside the bounds (because we will mainly use this table for the multiplication of
   // two GF numbers, no more).
   // @see {@link mul}
-  for (i = 255; i < 512; i++) {
+  for (let i = 255; i < 512; i++) {
     EXP_TABLE[i] = EXP_TABLE[i - 255]
   }
 }())
@@ -16024,8 +16691,8 @@ exports.mul = function mul (x, y) {
 /***/ 6674:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-var Mode = __nccwpck_require__(4373)
-var Utils = __nccwpck_require__(5018)
+const Mode = __nccwpck_require__(4373)
+const Utils = __nccwpck_require__(5018)
 
 function KanjiData (data) {
   this.mode = Mode.KANJI
@@ -16045,13 +16712,13 @@ KanjiData.prototype.getBitsLength = function getBitsLength () {
 }
 
 KanjiData.prototype.write = function (bitBuffer) {
-  var i
+  let i
 
   // In the Shift JIS system, Kanji characters are represented by a two byte combination.
   // These byte values are shifted from the JIS X 0208 values.
   // JIS X 0208 gives details of the shift coded representation.
   for (i = 0; i < this.data.length; i++) {
-    var value = Utils.toSJIS(this.data[i])
+    let value = Utils.toSJIS(this.data[i])
 
     // For characters with Shift JIS values from 0x8140 to 0x9FFC:
     if (value >= 0x8140 && value <= 0x9FFC) {
@@ -16104,7 +16771,7 @@ exports.Patterns = {
  * Weighted penalty scores for the undesirable features
  * @type {Object}
  */
-var PenaltyScores = {
+const PenaltyScores = {
   N1: 3,
   N2: 3,
   N3: 40,
@@ -16140,19 +16807,19 @@ exports.from = function from (value) {
 * i is the amount by which the number of adjacent modules of the same color exceeds 5
 */
 exports.getPenaltyN1 = function getPenaltyN1 (data) {
-  var size = data.size
-  var points = 0
-  var sameCountCol = 0
-  var sameCountRow = 0
-  var lastCol = null
-  var lastRow = null
+  const size = data.size
+  let points = 0
+  let sameCountCol = 0
+  let sameCountRow = 0
+  let lastCol = null
+  let lastRow = null
 
-  for (var row = 0; row < size; row++) {
+  for (let row = 0; row < size; row++) {
     sameCountCol = sameCountRow = 0
     lastCol = lastRow = null
 
-    for (var col = 0; col < size; col++) {
-      var module = data.get(row, col)
+    for (let col = 0; col < size; col++) {
+      let module = data.get(row, col)
       if (module === lastCol) {
         sameCountCol++
       } else {
@@ -16184,12 +16851,12 @@ exports.getPenaltyN1 = function getPenaltyN1 (data) {
  * Points: N2 * (m - 1) * (n - 1)
  */
 exports.getPenaltyN2 = function getPenaltyN2 (data) {
-  var size = data.size
-  var points = 0
+  const size = data.size
+  let points = 0
 
-  for (var row = 0; row < size - 1; row++) {
-    for (var col = 0; col < size - 1; col++) {
-      var last = data.get(row, col) +
+  for (let row = 0; row < size - 1; row++) {
+    for (let col = 0; col < size - 1; col++) {
+      const last = data.get(row, col) +
         data.get(row, col + 1) +
         data.get(row + 1, col) +
         data.get(row + 1, col + 1)
@@ -16208,14 +16875,14 @@ exports.getPenaltyN2 = function getPenaltyN2 (data) {
  * Points: N3 * number of pattern found
  */
 exports.getPenaltyN3 = function getPenaltyN3 (data) {
-  var size = data.size
-  var points = 0
-  var bitsCol = 0
-  var bitsRow = 0
+  const size = data.size
+  let points = 0
+  let bitsCol = 0
+  let bitsRow = 0
 
-  for (var row = 0; row < size; row++) {
+  for (let row = 0; row < size; row++) {
     bitsCol = bitsRow = 0
-    for (var col = 0; col < size; col++) {
+    for (let col = 0; col < size; col++) {
       bitsCol = ((bitsCol << 1) & 0x7FF) | data.get(row, col)
       if (col >= 10 && (bitsCol === 0x5D0 || bitsCol === 0x05D)) points++
 
@@ -16236,12 +16903,12 @@ exports.getPenaltyN3 = function getPenaltyN3 (data) {
  * in the symbol from 50% in steps of 5%
  */
 exports.getPenaltyN4 = function getPenaltyN4 (data) {
-  var darkCount = 0
-  var modulesCount = data.data.length
+  let darkCount = 0
+  const modulesCount = data.data.length
 
-  for (var i = 0; i < modulesCount; i++) darkCount += data.data[i]
+  for (let i = 0; i < modulesCount; i++) darkCount += data.data[i]
 
-  var k = Math.abs(Math.ceil((darkCount * 100 / modulesCount) / 5) - 10)
+  const k = Math.abs(Math.ceil((darkCount * 100 / modulesCount) / 5) - 10)
 
   return k * PenaltyScores.N4
 }
@@ -16276,10 +16943,10 @@ function getMaskAt (maskPattern, i, j) {
  * @param  {BitMatrix} data    BitMatrix data
  */
 exports.applyMask = function applyMask (pattern, data) {
-  var size = data.size
+  const size = data.size
 
-  for (var col = 0; col < size; col++) {
-    for (var row = 0; row < size; row++) {
+  for (let col = 0; col < size; col++) {
+    for (let row = 0; row < size; row++) {
       if (data.isReserved(row, col)) continue
       data.xor(row, col, getMaskAt(pattern, row, col))
     }
@@ -16293,16 +16960,16 @@ exports.applyMask = function applyMask (pattern, data) {
  * @return {Number} Mask pattern reference number
  */
 exports.getBestMask = function getBestMask (data, setupFormatFunc) {
-  var numPatterns = Object.keys(exports.Patterns).length
-  var bestPattern = 0
-  var lowerPenalty = Infinity
+  const numPatterns = Object.keys(exports.Patterns).length
+  let bestPattern = 0
+  let lowerPenalty = Infinity
 
-  for (var p = 0; p < numPatterns; p++) {
+  for (let p = 0; p < numPatterns; p++) {
     setupFormatFunc(p)
     exports.applyMask(p, data)
 
     // Calculate penalty
-    var penalty =
+    const penalty =
       exports.getPenaltyN1(data) +
       exports.getPenaltyN2(data) +
       exports.getPenaltyN3(data) +
@@ -16326,8 +16993,8 @@ exports.getBestMask = function getBestMask (data, setupFormatFunc) {
 /***/ 4373:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-var VersionCheck = __nccwpck_require__(4874)
-var Regex = __nccwpck_require__(9801)
+const VersionCheck = __nccwpck_require__(4874)
+const Regex = __nccwpck_require__(9801)
 
 /**
  * Numeric mode encodes data from the decimal digit set (0 - 9)
@@ -16458,7 +17125,7 @@ function fromString (string) {
     throw new Error('Param is not a string')
   }
 
-  var lcStr = string.toLowerCase()
+  const lcStr = string.toLowerCase()
 
   switch (lcStr) {
     case 'numeric':
@@ -16500,7 +17167,7 @@ exports.from = function from (value, defaultValue) {
 /***/ 3302:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-var Mode = __nccwpck_require__(4373)
+const Mode = __nccwpck_require__(4373)
 
 function NumericData (data) {
   this.mode = Mode.NUMERIC
@@ -16520,7 +17187,7 @@ NumericData.prototype.getBitsLength = function getBitsLength () {
 }
 
 NumericData.prototype.write = function write (bitBuffer) {
-  var i, group, value
+  let i, group, value
 
   // The input data string is divided into groups of three digits,
   // and each group is converted to its 10-bit binary equivalent.
@@ -16533,7 +17200,7 @@ NumericData.prototype.write = function write (bitBuffer) {
 
   // If the number of input digits is not an exact multiple of three,
   // the final one or two digits are converted to 4 or 7 bits respectively.
-  var remainingNum = this.data.length - i
+  const remainingNum = this.data.length - i
   if (remainingNum > 0) {
     group = this.data.substr(i)
     value = parseInt(group, 10)
@@ -16550,22 +17217,20 @@ module.exports = NumericData
 /***/ 6277:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-var Buffer = __nccwpck_require__(5693)
-var GF = __nccwpck_require__(6946)
+const GF = __nccwpck_require__(6946)
 
 /**
  * Multiplies two polynomials inside Galois Field
  *
- * @param  {Buffer} p1 Polynomial
- * @param  {Buffer} p2 Polynomial
- * @return {Buffer}    Product of p1 and p2
+ * @param  {Uint8Array} p1 Polynomial
+ * @param  {Uint8Array} p2 Polynomial
+ * @return {Uint8Array}    Product of p1 and p2
  */
 exports.mul = function mul (p1, p2) {
-  var coeff = new Buffer(p1.length + p2.length - 1)
-  coeff.fill(0)
+  const coeff = new Uint8Array(p1.length + p2.length - 1)
 
-  for (var i = 0; i < p1.length; i++) {
-    for (var j = 0; j < p2.length; j++) {
+  for (let i = 0; i < p1.length; i++) {
+    for (let j = 0; j < p2.length; j++) {
       coeff[i + j] ^= GF.mul(p1[i], p2[j])
     }
   }
@@ -16576,22 +17241,22 @@ exports.mul = function mul (p1, p2) {
 /**
  * Calculate the remainder of polynomials division
  *
- * @param  {Buffer} divident Polynomial
- * @param  {Buffer} divisor  Polynomial
- * @return {Buffer}          Remainder
+ * @param  {Uint8Array} divident Polynomial
+ * @param  {Uint8Array} divisor  Polynomial
+ * @return {Uint8Array}          Remainder
  */
 exports.mod = function mod (divident, divisor) {
-  var result = new Buffer(divident)
+  let result = new Uint8Array(divident)
 
   while ((result.length - divisor.length) >= 0) {
-    var coeff = result[0]
+    const coeff = result[0]
 
-    for (var i = 0; i < divisor.length; i++) {
+    for (let i = 0; i < divisor.length; i++) {
       result[i] ^= GF.mul(divisor[i], coeff)
     }
 
     // remove all zeros from buffer head
-    var offset = 0
+    let offset = 0
     while (offset < result.length && result[offset] === 0) offset++
     result = result.slice(offset)
   }
@@ -16604,12 +17269,12 @@ exports.mod = function mod (divident, divisor) {
  * (used by Reed-Solomon encoder)
  *
  * @param  {Number} degree Degree of the generator polynomial
- * @return {Buffer}        Buffer containing polynomial coefficients
+ * @return {Uint8Array}    Buffer containing polynomial coefficients
  */
 exports.generateECPolynomial = function generateECPolynomial (degree) {
-  var poly = new Buffer([1])
-  for (var i = 0; i < degree; i++) {
-    poly = exports.mul(poly, [1, GF.exp(i)])
+  let poly = new Uint8Array([1])
+  for (let i = 0; i < degree; i++) {
+    poly = exports.mul(poly, new Uint8Array([1, GF.exp(i)]))
   }
 
   return poly
@@ -16621,21 +17286,19 @@ exports.generateECPolynomial = function generateECPolynomial (degree) {
 /***/ 6883:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-var Buffer = __nccwpck_require__(5693)
-var Utils = __nccwpck_require__(5018)
-var ECLevel = __nccwpck_require__(7161)
-var BitBuffer = __nccwpck_require__(1710)
-var BitMatrix = __nccwpck_require__(2270)
-var AlignmentPattern = __nccwpck_require__(7909)
-var FinderPattern = __nccwpck_require__(4580)
-var MaskPattern = __nccwpck_require__(4203)
-var ECCode = __nccwpck_require__(3891)
-var ReedSolomonEncoder = __nccwpck_require__(226)
-var Version = __nccwpck_require__(6324)
-var FormatInfo = __nccwpck_require__(3307)
-var Mode = __nccwpck_require__(4373)
-var Segments = __nccwpck_require__(9361)
-var isArray = __nccwpck_require__(893)
+const Utils = __nccwpck_require__(5018)
+const ECLevel = __nccwpck_require__(7161)
+const BitBuffer = __nccwpck_require__(1710)
+const BitMatrix = __nccwpck_require__(2270)
+const AlignmentPattern = __nccwpck_require__(7909)
+const FinderPattern = __nccwpck_require__(4580)
+const MaskPattern = __nccwpck_require__(4203)
+const ECCode = __nccwpck_require__(3891)
+const ReedSolomonEncoder = __nccwpck_require__(226)
+const Version = __nccwpck_require__(6324)
+const FormatInfo = __nccwpck_require__(3307)
+const Mode = __nccwpck_require__(4373)
+const Segments = __nccwpck_require__(9361)
 
 /**
  * QRCode for JavaScript
@@ -16670,17 +17333,17 @@ var isArray = __nccwpck_require__(893)
  * @param  {Number}    version QR Code version
  */
 function setupFinderPattern (matrix, version) {
-  var size = matrix.size
-  var pos = FinderPattern.getPositions(version)
+  const size = matrix.size
+  const pos = FinderPattern.getPositions(version)
 
-  for (var i = 0; i < pos.length; i++) {
-    var row = pos[i][0]
-    var col = pos[i][1]
+  for (let i = 0; i < pos.length; i++) {
+    const row = pos[i][0]
+    const col = pos[i][1]
 
-    for (var r = -1; r <= 7; r++) {
+    for (let r = -1; r <= 7; r++) {
       if (row + r <= -1 || size <= row + r) continue
 
-      for (var c = -1; c <= 7; c++) {
+      for (let c = -1; c <= 7; c++) {
         if (col + c <= -1 || size <= col + c) continue
 
         if ((r >= 0 && r <= 6 && (c === 0 || c === 6)) ||
@@ -16703,10 +17366,10 @@ function setupFinderPattern (matrix, version) {
  * @param  {BitMatrix} matrix Modules matrix
  */
 function setupTimingPattern (matrix) {
-  var size = matrix.size
+  const size = matrix.size
 
-  for (var r = 8; r < size - 8; r++) {
-    var value = r % 2 === 0
+  for (let r = 8; r < size - 8; r++) {
+    const value = r % 2 === 0
     matrix.set(r, 6, value, true)
     matrix.set(6, r, value, true)
   }
@@ -16721,14 +17384,14 @@ function setupTimingPattern (matrix) {
  * @param  {Number}    version QR Code version
  */
 function setupAlignmentPattern (matrix, version) {
-  var pos = AlignmentPattern.getPositions(version)
+  const pos = AlignmentPattern.getPositions(version)
 
-  for (var i = 0; i < pos.length; i++) {
-    var row = pos[i][0]
-    var col = pos[i][1]
+  for (let i = 0; i < pos.length; i++) {
+    const row = pos[i][0]
+    const col = pos[i][1]
 
-    for (var r = -2; r <= 2; r++) {
-      for (var c = -2; c <= 2; c++) {
+    for (let r = -2; r <= 2; r++) {
+      for (let c = -2; c <= 2; c++) {
         if (r === -2 || r === 2 || c === -2 || c === 2 ||
           (r === 0 && c === 0)) {
           matrix.set(row + r, col + c, true, true)
@@ -16747,11 +17410,11 @@ function setupAlignmentPattern (matrix, version) {
  * @param  {Number}    version QR Code version
  */
 function setupVersionInfo (matrix, version) {
-  var size = matrix.size
-  var bits = Version.getEncodedBits(version)
-  var row, col, mod
+  const size = matrix.size
+  const bits = Version.getEncodedBits(version)
+  let row, col, mod
 
-  for (var i = 0; i < 18; i++) {
+  for (let i = 0; i < 18; i++) {
     row = Math.floor(i / 3)
     col = i % 3 + size - 8 - 3
     mod = ((bits >> i) & 1) === 1
@@ -16769,9 +17432,9 @@ function setupVersionInfo (matrix, version) {
  * @param  {Number}    maskPattern          Mask pattern reference value
  */
 function setupFormatInfo (matrix, errorCorrectionLevel, maskPattern) {
-  var size = matrix.size
-  var bits = FormatInfo.getEncodedBits(errorCorrectionLevel, maskPattern)
-  var i, mod
+  const size = matrix.size
+  const bits = FormatInfo.getEncodedBits(errorCorrectionLevel, maskPattern)
+  let i, mod
 
   for (i = 0; i < 15; i++) {
     mod = ((bits >> i) & 1) === 1
@@ -16802,23 +17465,23 @@ function setupFormatInfo (matrix, errorCorrectionLevel, maskPattern) {
 /**
  * Add encoded data bits to matrix
  *
- * @param  {BitMatrix} matrix Modules matrix
- * @param  {Buffer}    data   Data codewords
+ * @param  {BitMatrix}  matrix Modules matrix
+ * @param  {Uint8Array} data   Data codewords
  */
 function setupData (matrix, data) {
-  var size = matrix.size
-  var inc = -1
-  var row = size - 1
-  var bitIndex = 7
-  var byteIndex = 0
+  const size = matrix.size
+  let inc = -1
+  let row = size - 1
+  let bitIndex = 7
+  let byteIndex = 0
 
-  for (var col = size - 1; col > 0; col -= 2) {
+  for (let col = size - 1; col > 0; col -= 2) {
     if (col === 6) col--
 
     while (true) {
-      for (var c = 0; c < 2; c++) {
+      for (let c = 0; c < 2; c++) {
         if (!matrix.isReserved(row, col - c)) {
-          var dark = false
+          let dark = false
 
           if (byteIndex < data.length) {
             dark = (((data[byteIndex] >>> bitIndex) & 1) === 1)
@@ -16851,11 +17514,11 @@ function setupData (matrix, data) {
  * @param  {Number}   version              QR Code version
  * @param  {ErrorCorrectionLevel}   errorCorrectionLevel Error correction level
  * @param  {ByteData} data                 Data input
- * @return {Buffer}                        Buffer containing encoded codewords
+ * @return {Uint8Array}                    Buffer containing encoded codewords
  */
 function createData (version, errorCorrectionLevel, segments) {
   // Prepare data buffer
-  var buffer = new BitBuffer()
+  const buffer = new BitBuffer()
 
   segments.forEach(function (data) {
     // prefix data with mode indicator (4 bits)
@@ -16875,9 +17538,9 @@ function createData (version, errorCorrectionLevel, segments) {
   })
 
   // Calculate required number of bits
-  var totalCodewords = Utils.getSymbolTotalCodewords(version)
-  var ecTotalCodewords = ECCode.getTotalCodewordsCount(version, errorCorrectionLevel)
-  var dataTotalCodewordsBits = (totalCodewords - ecTotalCodewords) * 8
+  const totalCodewords = Utils.getSymbolTotalCodewords(version)
+  const ecTotalCodewords = ECCode.getTotalCodewordsCount(version, errorCorrectionLevel)
+  const dataTotalCodewordsBits = (totalCodewords - ecTotalCodewords) * 8
 
   // Add a terminator.
   // If the bit string is shorter than the total number of required bits,
@@ -16901,8 +17564,8 @@ function createData (version, errorCorrectionLevel, segments) {
   // Extend the buffer to fill the data capacity of the symbol corresponding to
   // the Version and Error Correction Level by adding the Pad Codewords 11101100 (0xEC)
   // and 00010001 (0x11) alternately.
-  var remainingByte = (dataTotalCodewordsBits - buffer.getLengthInBits()) / 8
-  for (var i = 0; i < remainingByte; i++) {
+  const remainingByte = (dataTotalCodewordsBits - buffer.getLengthInBits()) / 8
+  for (let i = 0; i < remainingByte; i++) {
     buffer.put(i % 2 ? 0x11 : 0xEC, 8)
   }
 
@@ -16916,45 +17579,45 @@ function createData (version, errorCorrectionLevel, segments) {
  * @param  {BitBuffer} bitBuffer            Data to encode
  * @param  {Number}    version              QR Code version
  * @param  {ErrorCorrectionLevel} errorCorrectionLevel Error correction level
- * @return {Buffer}                         Buffer containing encoded codewords
+ * @return {Uint8Array}                     Buffer containing encoded codewords
  */
 function createCodewords (bitBuffer, version, errorCorrectionLevel) {
   // Total codewords for this QR code version (Data + Error correction)
-  var totalCodewords = Utils.getSymbolTotalCodewords(version)
+  const totalCodewords = Utils.getSymbolTotalCodewords(version)
 
   // Total number of error correction codewords
-  var ecTotalCodewords = ECCode.getTotalCodewordsCount(version, errorCorrectionLevel)
+  const ecTotalCodewords = ECCode.getTotalCodewordsCount(version, errorCorrectionLevel)
 
   // Total number of data codewords
-  var dataTotalCodewords = totalCodewords - ecTotalCodewords
+  const dataTotalCodewords = totalCodewords - ecTotalCodewords
 
   // Total number of blocks
-  var ecTotalBlocks = ECCode.getBlocksCount(version, errorCorrectionLevel)
+  const ecTotalBlocks = ECCode.getBlocksCount(version, errorCorrectionLevel)
 
   // Calculate how many blocks each group should contain
-  var blocksInGroup2 = totalCodewords % ecTotalBlocks
-  var blocksInGroup1 = ecTotalBlocks - blocksInGroup2
+  const blocksInGroup2 = totalCodewords % ecTotalBlocks
+  const blocksInGroup1 = ecTotalBlocks - blocksInGroup2
 
-  var totalCodewordsInGroup1 = Math.floor(totalCodewords / ecTotalBlocks)
+  const totalCodewordsInGroup1 = Math.floor(totalCodewords / ecTotalBlocks)
 
-  var dataCodewordsInGroup1 = Math.floor(dataTotalCodewords / ecTotalBlocks)
-  var dataCodewordsInGroup2 = dataCodewordsInGroup1 + 1
+  const dataCodewordsInGroup1 = Math.floor(dataTotalCodewords / ecTotalBlocks)
+  const dataCodewordsInGroup2 = dataCodewordsInGroup1 + 1
 
   // Number of EC codewords is the same for both groups
-  var ecCount = totalCodewordsInGroup1 - dataCodewordsInGroup1
+  const ecCount = totalCodewordsInGroup1 - dataCodewordsInGroup1
 
   // Initialize a Reed-Solomon encoder with a generator polynomial of degree ecCount
-  var rs = new ReedSolomonEncoder(ecCount)
+  const rs = new ReedSolomonEncoder(ecCount)
 
-  var offset = 0
-  var dcData = new Array(ecTotalBlocks)
-  var ecData = new Array(ecTotalBlocks)
-  var maxDataSize = 0
-  var buffer = new Buffer(bitBuffer.buffer)
+  let offset = 0
+  const dcData = new Array(ecTotalBlocks)
+  const ecData = new Array(ecTotalBlocks)
+  let maxDataSize = 0
+  const buffer = new Uint8Array(bitBuffer.buffer)
 
   // Divide the buffer into the required number of blocks
-  for (var b = 0; b < ecTotalBlocks; b++) {
-    var dataSize = b < blocksInGroup1 ? dataCodewordsInGroup1 : dataCodewordsInGroup2
+  for (let b = 0; b < ecTotalBlocks; b++) {
+    const dataSize = b < blocksInGroup1 ? dataCodewordsInGroup1 : dataCodewordsInGroup2
 
     // extract a block of data from buffer
     dcData[b] = buffer.slice(offset, offset + dataSize)
@@ -16968,9 +17631,9 @@ function createCodewords (bitBuffer, version, errorCorrectionLevel) {
 
   // Create final data
   // Interleave the data and error correction codewords from each block
-  var data = new Buffer(totalCodewords)
-  var index = 0
-  var i, r
+  const data = new Uint8Array(totalCodewords)
+  let index = 0
+  let i, r
 
   // Add data codewords
   for (i = 0; i < maxDataSize; i++) {
@@ -17001,19 +17664,18 @@ function createCodewords (bitBuffer, version, errorCorrectionLevel) {
  * @return {Object}                      Object containing symbol data
  */
 function createSymbol (data, version, errorCorrectionLevel, maskPattern) {
-  var segments
+  let segments
 
-  if (isArray(data)) {
+  if (Array.isArray(data)) {
     segments = Segments.fromArray(data)
   } else if (typeof data === 'string') {
-    var estimatedVersion = version
+    let estimatedVersion = version
 
     if (!estimatedVersion) {
-      var rawSegments = Segments.rawSplit(data)
+      const rawSegments = Segments.rawSplit(data)
 
       // Estimate best version that can contain raw splitted segments
-      estimatedVersion = Version.getBestVersionForData(rawSegments,
-        errorCorrectionLevel)
+      estimatedVersion = Version.getBestVersionForData(rawSegments, errorCorrectionLevel)
     }
 
     // Build optimized segments
@@ -17024,8 +17686,7 @@ function createSymbol (data, version, errorCorrectionLevel, maskPattern) {
   }
 
   // Get the min version that can contain data
-  var bestVersion = Version.getBestVersionForData(segments,
-      errorCorrectionLevel)
+  const bestVersion = Version.getBestVersionForData(segments, errorCorrectionLevel)
 
   // If no version is found, data cannot be stored
   if (!bestVersion) {
@@ -17044,11 +17705,11 @@ function createSymbol (data, version, errorCorrectionLevel, maskPattern) {
     )
   }
 
-  var dataBits = createData(version, errorCorrectionLevel, segments)
+  const dataBits = createData(version, errorCorrectionLevel, segments)
 
   // Allocate matrix buffer
-  var moduleCount = Utils.getSymbolSize(version)
-  var modules = new BitMatrix(moduleCount)
+  const moduleCount = Utils.getSymbolSize(version)
+  const modules = new BitMatrix(moduleCount)
 
   // Add function modules
   setupFinderPattern(modules, version)
@@ -17103,9 +17764,9 @@ exports.create = function create (data, options) {
     throw new Error('No input text')
   }
 
-  var errorCorrectionLevel = ECLevel.M
-  var version
-  var mask
+  let errorCorrectionLevel = ECLevel.M
+  let version
+  let mask
 
   if (typeof options !== 'undefined') {
     // Use higher error correction level as default
@@ -17127,8 +17788,7 @@ exports.create = function create (data, options) {
 /***/ 226:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-var Buffer = __nccwpck_require__(5693)
-var Polynomial = __nccwpck_require__(6277)
+const Polynomial = __nccwpck_require__(6277)
 
 function ReedSolomonEncoder (degree) {
   this.genPoly = undefined
@@ -17152,8 +17812,8 @@ ReedSolomonEncoder.prototype.initialize = function initialize (degree) {
 /**
  * Encodes a chunk of data
  *
- * @param  {Buffer} data Buffer containing input data
- * @return {Buffer}      Buffer containing encoded data
+ * @param  {Uint8Array} data Buffer containing input data
+ * @return {Uint8Array}      Buffer containing encoded data
  */
 ReedSolomonEncoder.prototype.encode = function encode (data) {
   if (!this.genPoly) {
@@ -17162,22 +17822,20 @@ ReedSolomonEncoder.prototype.encode = function encode (data) {
 
   // Calculate EC for this data block
   // extends data size to data+genPoly size
-  var pad = new Buffer(this.degree)
-  pad.fill(0)
-  var paddedData = Buffer.concat([data, pad], data.length + this.degree)
+  const paddedData = new Uint8Array(data.length + this.degree)
+  paddedData.set(data)
 
   // The error correction codewords are the remainder after dividing the data codewords
   // by a generator polynomial
-  var remainder = Polynomial.mod(paddedData, this.genPoly)
+  const remainder = Polynomial.mod(paddedData, this.genPoly)
 
   // return EC data blocks (last n byte, where n is the degree of genPoly)
   // If coefficients number in remainder are less than genPoly degree,
   // pad with 0s to the left to reach the needed number of coefficients
-  var start = this.degree - remainder.length
+  const start = this.degree - remainder.length
   if (start > 0) {
-    var buff = new Buffer(this.degree)
-    buff.fill(0)
-    remainder.copy(buff, start)
+    const buff = new Uint8Array(this.degree)
+    buff.set(remainder, start)
 
     return buff
   }
@@ -17193,15 +17851,15 @@ module.exports = ReedSolomonEncoder
 /***/ 9801:
 /***/ ((__unused_webpack_module, exports) => {
 
-var numeric = '[0-9]+'
-var alphanumeric = '[A-Z $%*+\\-./:]+'
-var kanji = '(?:[u3000-u303F]|[u3040-u309F]|[u30A0-u30FF]|' +
+const numeric = '[0-9]+'
+const alphanumeric = '[A-Z $%*+\\-./:]+'
+let kanji = '(?:[u3000-u303F]|[u3040-u309F]|[u30A0-u30FF]|' +
   '[uFF00-uFFEF]|[u4E00-u9FAF]|[u2605-u2606]|[u2190-u2195]|u203B|' +
   '[u2010u2015u2018u2019u2025u2026u201Cu201Du2225u2260]|' +
   '[u0391-u0451]|[u00A7u00A8u00B1u00B4u00D7u00F7])+'
 kanji = kanji.replace(/u/g, '\\u')
 
-var byte = '(?:(?![A-Z0-9 $%*+\\-./:]|' + kanji + ')(?:.|[\r\n]))+'
+const byte = '(?:(?![A-Z0-9 $%*+\\-./:]|' + kanji + ')(?:.|[\r\n]))+'
 
 exports.KANJI = new RegExp(kanji, 'g')
 exports.BYTE_KANJI = new RegExp('[^A-Z0-9 $%*+\\-./:]+', 'g')
@@ -17209,9 +17867,9 @@ exports.BYTE = new RegExp(byte, 'g')
 exports.NUMERIC = new RegExp(numeric, 'g')
 exports.ALPHANUMERIC = new RegExp(alphanumeric, 'g')
 
-var TEST_KANJI = new RegExp('^' + kanji + '$')
-var TEST_NUMERIC = new RegExp('^' + numeric + '$')
-var TEST_ALPHANUMERIC = new RegExp('^[A-Z0-9 $%*+\\-./:]+$')
+const TEST_KANJI = new RegExp('^' + kanji + '$')
+const TEST_NUMERIC = new RegExp('^' + numeric + '$')
+const TEST_ALPHANUMERIC = new RegExp('^[A-Z0-9 $%*+\\-./:]+$')
 
 exports.testKanji = function testKanji (str) {
   return TEST_KANJI.test(str)
@@ -17231,14 +17889,14 @@ exports.testAlphanumeric = function testAlphanumeric (str) {
 /***/ 9361:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-var Mode = __nccwpck_require__(4373)
-var NumericData = __nccwpck_require__(3302)
-var AlphanumericData = __nccwpck_require__(4137)
-var ByteData = __nccwpck_require__(5456)
-var KanjiData = __nccwpck_require__(6674)
-var Regex = __nccwpck_require__(9801)
-var Utils = __nccwpck_require__(5018)
-var dijkstra = __nccwpck_require__(6253)
+const Mode = __nccwpck_require__(4373)
+const NumericData = __nccwpck_require__(3302)
+const AlphanumericData = __nccwpck_require__(4137)
+const ByteData = __nccwpck_require__(5456)
+const KanjiData = __nccwpck_require__(6674)
+const Regex = __nccwpck_require__(9801)
+const Utils = __nccwpck_require__(5018)
+const dijkstra = __nccwpck_require__(6253)
 
 /**
  * Returns UTF8 byte length
@@ -17259,8 +17917,8 @@ function getStringByteLength (str) {
  * @return {Array}       Array of object with segments data
  */
 function getSegments (regex, mode, str) {
-  var segments = []
-  var result
+  const segments = []
+  let result
 
   while ((result = regex.exec(str)) !== null) {
     segments.push({
@@ -17282,10 +17940,10 @@ function getSegments (regex, mode, str) {
  * @return {Array}          Array of object with segments data
  */
 function getSegmentsFromString (dataStr) {
-  var numSegs = getSegments(Regex.NUMERIC, Mode.NUMERIC, dataStr)
-  var alphaNumSegs = getSegments(Regex.ALPHANUMERIC, Mode.ALPHANUMERIC, dataStr)
-  var byteSegs
-  var kanjiSegs
+  const numSegs = getSegments(Regex.NUMERIC, Mode.NUMERIC, dataStr)
+  const alphaNumSegs = getSegments(Regex.ALPHANUMERIC, Mode.ALPHANUMERIC, dataStr)
+  let byteSegs
+  let kanjiSegs
 
   if (Utils.isKanjiModeEnabled()) {
     byteSegs = getSegments(Regex.BYTE, Mode.BYTE, dataStr)
@@ -17295,7 +17953,7 @@ function getSegmentsFromString (dataStr) {
     kanjiSegs = []
   }
 
-  var segs = numSegs.concat(alphaNumSegs, byteSegs, kanjiSegs)
+  const segs = numSegs.concat(alphaNumSegs, byteSegs, kanjiSegs)
 
   return segs
     .sort(function (s1, s2) {
@@ -17339,7 +17997,7 @@ function getSegmentBitsLength (length, mode) {
  */
 function mergeSegments (segs) {
   return segs.reduce(function (acc, curr) {
-    var prevSeg = acc.length - 1 >= 0 ? acc[acc.length - 1] : null
+    const prevSeg = acc.length - 1 >= 0 ? acc[acc.length - 1] : null
     if (prevSeg && prevSeg.mode === curr.mode) {
       acc[acc.length - 1].data += curr.data
       return acc
@@ -17367,9 +18025,9 @@ function mergeSegments (segs) {
  * @return {Array}      Array of object with segments data
  */
 function buildNodes (segs) {
-  var nodes = []
-  for (var i = 0; i < segs.length; i++) {
-    var seg = segs[i]
+  const nodes = []
+  for (let i = 0; i < segs.length; i++) {
+    const seg = segs[i]
 
     switch (seg.mode) {
       case Mode.NUMERIC:
@@ -17411,24 +18069,24 @@ function buildNodes (segs) {
  * @return {Object}         Graph of all possible segments
  */
 function buildGraph (nodes, version) {
-  var table = {}
-  var graph = {'start': {}}
-  var prevNodeIds = ['start']
+  const table = {}
+  const graph = { start: {} }
+  let prevNodeIds = ['start']
 
-  for (var i = 0; i < nodes.length; i++) {
-    var nodeGroup = nodes[i]
-    var currentNodeIds = []
+  for (let i = 0; i < nodes.length; i++) {
+    const nodeGroup = nodes[i]
+    const currentNodeIds = []
 
-    for (var j = 0; j < nodeGroup.length; j++) {
-      var node = nodeGroup[j]
-      var key = '' + i + j
+    for (let j = 0; j < nodeGroup.length; j++) {
+      const node = nodeGroup[j]
+      const key = '' + i + j
 
       currentNodeIds.push(key)
       table[key] = { node: node, lastCount: 0 }
       graph[key] = {}
 
-      for (var n = 0; n < prevNodeIds.length; n++) {
-        var prevNodeId = prevNodeIds[n]
+      for (let n = 0; n < prevNodeIds.length; n++) {
+        const prevNodeId = prevNodeIds[n]
 
         if (table[prevNodeId] && table[prevNodeId].node.mode === node.mode) {
           graph[prevNodeId][key] =
@@ -17448,8 +18106,8 @@ function buildGraph (nodes, version) {
     prevNodeIds = currentNodeIds
   }
 
-  for (n = 0; n < prevNodeIds.length; n++) {
-    graph[prevNodeIds[n]]['end'] = 0
+  for (let n = 0; n < prevNodeIds.length; n++) {
+    graph[prevNodeIds[n]].end = 0
   }
 
   return { map: graph, table: table }
@@ -17464,8 +18122,8 @@ function buildGraph (nodes, version) {
  * @return {Segment}                 Segment
  */
 function buildSingleSegment (data, modesHint) {
-  var mode
-  var bestMode = Mode.getBestModeForData(data)
+  let mode
+  const bestMode = Mode.getBestModeForData(data)
 
   mode = Mode.from(modesHint, bestMode)
 
@@ -17532,14 +18190,14 @@ exports.fromArray = function fromArray (array) {
  * @return {Array}          Array of segments
  */
 exports.fromString = function fromString (data, version) {
-  var segs = getSegmentsFromString(data, Utils.isKanjiModeEnabled())
+  const segs = getSegmentsFromString(data, Utils.isKanjiModeEnabled())
 
-  var nodes = buildNodes(segs)
-  var graph = buildGraph(nodes, version)
-  var path = dijkstra.find_path(graph.map, 'start', 'end')
+  const nodes = buildNodes(segs)
+  const graph = buildGraph(nodes, version)
+  const path = dijkstra.find_path(graph.map, 'start', 'end')
 
-  var optimizedSegs = []
-  for (var i = 1; i < path.length - 1; i++) {
+  const optimizedSegs = []
+  for (let i = 1; i < path.length - 1; i++) {
     optimizedSegs.push(graph.table[path[i]].node)
   }
 
@@ -17568,8 +18226,8 @@ exports.rawSplit = function rawSplit (data) {
 /***/ 5018:
 /***/ ((__unused_webpack_module, exports) => {
 
-var toSJISFunction
-var CODEWORDS_COUNT = [
+let toSJISFunction
+const CODEWORDS_COUNT = [
   0, // Not used
   26, 44, 70, 100, 134, 172, 196, 242, 292, 346,
   404, 466, 532, 581, 655, 733, 815, 901, 991, 1085,
@@ -17606,7 +18264,7 @@ exports.getSymbolTotalCodewords = function getSymbolTotalCodewords (version) {
  * @return {Number}      Encoded value
  */
 exports.getBCHDigit = function (data) {
-  var digit = 0
+  let digit = 0
 
   while (data !== 0) {
     digit++
@@ -17654,19 +18312,18 @@ exports.isValid = function isValid (version) {
 /***/ 6324:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-var Utils = __nccwpck_require__(5018)
-var ECCode = __nccwpck_require__(3891)
-var ECLevel = __nccwpck_require__(7161)
-var Mode = __nccwpck_require__(4373)
-var VersionCheck = __nccwpck_require__(4874)
-var isArray = __nccwpck_require__(893)
+const Utils = __nccwpck_require__(5018)
+const ECCode = __nccwpck_require__(3891)
+const ECLevel = __nccwpck_require__(7161)
+const Mode = __nccwpck_require__(4373)
+const VersionCheck = __nccwpck_require__(4874)
 
 // Generator polynomial used to encode version information
-var G18 = (1 << 12) | (1 << 11) | (1 << 10) | (1 << 9) | (1 << 8) | (1 << 5) | (1 << 2) | (1 << 0)
-var G18_BCH = Utils.getBCHDigit(G18)
+const G18 = (1 << 12) | (1 << 11) | (1 << 10) | (1 << 9) | (1 << 8) | (1 << 5) | (1 << 2) | (1 << 0)
+const G18_BCH = Utils.getBCHDigit(G18)
 
 function getBestVersionForDataLength (mode, length, errorCorrectionLevel) {
-  for (var currentVersion = 1; currentVersion <= 40; currentVersion++) {
+  for (let currentVersion = 1; currentVersion <= 40; currentVersion++) {
     if (length <= exports.getCapacity(currentVersion, errorCorrectionLevel, mode)) {
       return currentVersion
     }
@@ -17681,10 +18338,10 @@ function getReservedBitsCount (mode, version) {
 }
 
 function getTotalBitsFromDataArray (segments, version) {
-  var totalBits = 0
+  let totalBits = 0
 
   segments.forEach(function (data) {
-    var reservedBits = getReservedBitsCount(data.mode, version)
+    const reservedBits = getReservedBitsCount(data.mode, version)
     totalBits += reservedBits + data.getBitsLength()
   })
 
@@ -17692,8 +18349,8 @@ function getTotalBitsFromDataArray (segments, version) {
 }
 
 function getBestVersionForMixedData (segments, errorCorrectionLevel) {
-  for (var currentVersion = 1; currentVersion <= 40; currentVersion++) {
-    var length = getTotalBitsFromDataArray(segments, currentVersion)
+  for (let currentVersion = 1; currentVersion <= 40; currentVersion++) {
+    const length = getTotalBitsFromDataArray(segments, currentVersion)
     if (length <= exports.getCapacity(currentVersion, errorCorrectionLevel, Mode.MIXED)) {
       return currentVersion
     }
@@ -17736,17 +18393,17 @@ exports.getCapacity = function getCapacity (version, errorCorrectionLevel, mode)
   if (typeof mode === 'undefined') mode = Mode.BYTE
 
   // Total codewords for this QR code version (Data + Error correction)
-  var totalCodewords = Utils.getSymbolTotalCodewords(version)
+  const totalCodewords = Utils.getSymbolTotalCodewords(version)
 
   // Total number of error correction codewords
-  var ecTotalCodewords = ECCode.getTotalCodewordsCount(version, errorCorrectionLevel)
+  const ecTotalCodewords = ECCode.getTotalCodewordsCount(version, errorCorrectionLevel)
 
   // Total number of data codewords
-  var dataTotalCodewordsBits = (totalCodewords - ecTotalCodewords) * 8
+  const dataTotalCodewordsBits = (totalCodewords - ecTotalCodewords) * 8
 
   if (mode === Mode.MIXED) return dataTotalCodewordsBits
 
-  var usableBits = dataTotalCodewordsBits - getReservedBitsCount(mode, version)
+  const usableBits = dataTotalCodewordsBits - getReservedBitsCount(mode, version)
 
   // Return max number of storable codewords
   switch (mode) {
@@ -17774,11 +18431,11 @@ exports.getCapacity = function getCapacity (version, errorCorrectionLevel, mode)
  * @return {Number}                          QR Code version
  */
 exports.getBestVersionForData = function getBestVersionForData (data, errorCorrectionLevel) {
-  var seg
+  let seg
 
-  var ecl = ECLevel.from(errorCorrectionLevel, ECLevel.M)
+  const ecl = ECLevel.from(errorCorrectionLevel, ECLevel.M)
 
-  if (isArray(data)) {
+  if (Array.isArray(data)) {
     if (data.length > 1) {
       return getBestVersionForMixedData(data, ecl)
     }
@@ -17810,7 +18467,7 @@ exports.getEncodedBits = function getEncodedBits (version) {
     throw new Error('Invalid QR Code version')
   }
 
-  var d = version << 12
+  let d = version << 12
 
   while (Utils.getBCHDigit(d) - G18_BCH >= 0) {
     d ^= (G18 << (Utils.getBCHDigit(d) - G18_BCH))
@@ -17844,7 +18501,7 @@ module.exports = __nccwpck_require__(4610)
 /***/ 4275:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-var Utils = __nccwpck_require__(3973)
+const Utils = __nccwpck_require__(3973)
 
 function clearCanvas (ctx, canvas, size) {
   ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -17865,8 +18522,8 @@ function getCanvasElement () {
 }
 
 exports.render = function render (qrData, canvas, options) {
-  var opts = options
-  var canvasEl = canvas
+  let opts = options
+  let canvasEl = canvas
 
   if (typeof opts === 'undefined' && (!canvas || !canvas.getContext)) {
     opts = canvas
@@ -17878,10 +18535,10 @@ exports.render = function render (qrData, canvas, options) {
   }
 
   opts = Utils.getOptions(opts)
-  var size = Utils.getImageWidth(qrData.modules.size, opts)
+  const size = Utils.getImageWidth(qrData.modules.size, opts)
 
-  var ctx = canvasEl.getContext('2d')
-  var image = ctx.createImageData(size, size)
+  const ctx = canvasEl.getContext('2d')
+  const image = ctx.createImageData(size, size)
   Utils.qrToImageData(image.data, qrData, opts)
 
   clearCanvas(ctx, canvasEl, size)
@@ -17891,7 +18548,7 @@ exports.render = function render (qrData, canvas, options) {
 }
 
 exports.renderToDataURL = function renderToDataURL (qrData, canvas, options) {
-  var opts = options
+  let opts = options
 
   if (typeof opts === 'undefined' && (!canvas || !canvas.getContext)) {
     opts = canvas
@@ -17900,10 +18557,10 @@ exports.renderToDataURL = function renderToDataURL (qrData, canvas, options) {
 
   if (!opts) opts = {}
 
-  var canvasEl = exports.render(qrData, canvas, opts)
+  const canvasEl = exports.render(qrData, canvas, opts)
 
-  var type = opts.type || 'image/png'
-  var rendererOpts = opts.rendererOpts || {}
+  const type = opts.type || 'image/png'
+  const rendererOpts = opts.rendererOpts || {}
 
   return canvasEl.toDataURL(type, rendererOpts.quality)
 }
@@ -17914,19 +18571,19 @@ exports.renderToDataURL = function renderToDataURL (qrData, canvas, options) {
 /***/ 9874:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-var fs = __nccwpck_require__(7147)
-var PNG = (__nccwpck_require__(6413)/* .PNG */ .y)
-var Utils = __nccwpck_require__(3973)
+const fs = __nccwpck_require__(7147)
+const PNG = (__nccwpck_require__(6413)/* .PNG */ .y)
+const Utils = __nccwpck_require__(3973)
 
 exports.render = function render (qrData, options) {
-  var opts = Utils.getOptions(options)
-  var pngOpts = opts.rendererOpts
-  var size = Utils.getImageWidth(qrData.modules.size, opts)
+  const opts = Utils.getOptions(options)
+  const pngOpts = opts.rendererOpts
+  const size = Utils.getImageWidth(qrData.modules.size, opts)
 
   pngOpts.width = size
   pngOpts.height = size
 
-  var pngImage = new PNG(pngOpts)
+  const pngImage = new PNG(pngOpts)
   Utils.qrToImageData(pngImage.data, qrData, opts)
 
   return pngImage
@@ -17940,7 +18597,7 @@ exports.renderToDataURL = function renderToDataURL (qrData, options, cb) {
 
   exports.renderToBuffer(qrData, options, function (err, output) {
     if (err) cb(err)
-    var url = 'data:image/png;base64,'
+    let url = 'data:image/png;base64,'
     url += output.toString('base64')
     cb(null, url)
   })
@@ -17952,8 +18609,8 @@ exports.renderToBuffer = function renderToBuffer (qrData, options, cb) {
     options = undefined
   }
 
-  var png = exports.render(qrData, options)
-  var buffer = []
+  const png = exports.render(qrData, options)
+  const buffer = []
 
   png.on('error', cb)
 
@@ -17974,15 +18631,22 @@ exports.renderToFile = function renderToFile (path, qrData, options, cb) {
     options = undefined
   }
 
-  var stream = fs.createWriteStream(path)
-  stream.on('error', cb)
-  stream.on('close', cb)
+  let called = false
+  const done = (...args) => {
+    if (called) return
+    called = true
+    cb.apply(null, args)
+  }
+  const stream = fs.createWriteStream(path)
+
+  stream.on('error', done)
+  stream.on('close', done)
 
   exports.renderToFileStream(stream, qrData, options)
 }
 
 exports.renderToFileStream = function renderToFileStream (stream, qrData, options) {
-  var png = exports.render(qrData, options)
+  const png = exports.render(qrData, options)
   png.pack().pipe(stream)
 }
 
@@ -17992,11 +18656,11 @@ exports.renderToFileStream = function renderToFileStream (stream, qrData, option
 /***/ 516:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-var Utils = __nccwpck_require__(3973)
+const Utils = __nccwpck_require__(3973)
 
 function getColorAttrib (color, attrib) {
-  var alpha = color.a / 255
-  var str = attrib + '="' + color.hex + '"'
+  const alpha = color.a / 255
+  const str = attrib + '="' + color.hex + '"'
 
   return alpha < 1
     ? str + ' ' + attrib + '-opacity="' + alpha.toFixed(2).slice(1) + '"'
@@ -18004,21 +18668,21 @@ function getColorAttrib (color, attrib) {
 }
 
 function svgCmd (cmd, x, y) {
-  var str = cmd + x
+  let str = cmd + x
   if (typeof y !== 'undefined') str += ' ' + y
 
   return str
 }
 
 function qrToPath (data, size, margin) {
-  var path = ''
-  var moveBy = 0
-  var newRow = false
-  var lineLength = 0
+  let path = ''
+  let moveBy = 0
+  let newRow = false
+  let lineLength = 0
 
-  for (var i = 0; i < data.length; i++) {
-    var col = Math.floor(i % size)
-    var row = Math.floor(i / size)
+  for (let i = 0; i < data.length; i++) {
+    const col = Math.floor(i % size)
+    const row = Math.floor(i / size)
 
     if (!col && !newRow) newRow = true
 
@@ -18047,25 +18711,25 @@ function qrToPath (data, size, margin) {
 }
 
 exports.render = function render (qrData, options, cb) {
-  var opts = Utils.getOptions(options)
-  var size = qrData.modules.size
-  var data = qrData.modules.data
-  var qrcodesize = size + opts.margin * 2
+  const opts = Utils.getOptions(options)
+  const size = qrData.modules.size
+  const data = qrData.modules.data
+  const qrcodesize = size + opts.margin * 2
 
-  var bg = !opts.color.light.a
+  const bg = !opts.color.light.a
     ? ''
     : '<path ' + getColorAttrib(opts.color.light, 'fill') +
       ' d="M0 0h' + qrcodesize + 'v' + qrcodesize + 'H0z"/>'
 
-  var path =
+  const path =
     '<path ' + getColorAttrib(opts.color.dark, 'stroke') +
     ' d="' + qrToPath(data, size, opts.margin) + '"/>'
 
-  var viewBox = 'viewBox="' + '0 0 ' + qrcodesize + ' ' + qrcodesize + '"'
+  const viewBox = 'viewBox="' + '0 0 ' + qrcodesize + ' ' + qrcodesize + '"'
 
-  var width = !opts.width ? '' : 'width="' + opts.width + '" height="' + opts.width + '" '
+  const width = !opts.width ? '' : 'width="' + opts.width + '" height="' + opts.width + '" '
 
-  var svgTag = '<svg xmlns="http://www.w3.org/2000/svg" ' + width + viewBox + ' shape-rendering="crispEdges">' + bg + path + '</svg>\n'
+  const svgTag = '<svg xmlns="http://www.w3.org/2000/svg" ' + width + viewBox + ' shape-rendering="crispEdges">' + bg + path + '</svg>\n'
 
   if (typeof cb === 'function') {
     cb(null, svgTag)
@@ -18080,7 +18744,7 @@ exports.render = function render (qrData, options, cb) {
 /***/ 6725:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-var svgTagRenderer = __nccwpck_require__(516)
+const svgTagRenderer = __nccwpck_require__(516)
 
 exports.render = svgTagRenderer.render
 
@@ -18090,10 +18754,10 @@ exports.renderToFile = function renderToFile (path, qrData, options, cb) {
     options = undefined
   }
 
-  var fs = __nccwpck_require__(7147)
-  var svgTag = exports.render(qrData, options)
+  const fs = __nccwpck_require__(7147)
+  const svgTag = exports.render(qrData, options)
 
-  var xmlStr = '<?xml version="1.0" encoding="utf-8"?>' +
+  const xmlStr = '<?xml version="1.0" encoding="utf-8"?>' +
     '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">' +
     svgTag
 
@@ -18104,30 +18768,138 @@ exports.renderToFile = function renderToFile (path, qrData, options, cb) {
 /***/ }),
 
 /***/ 8649:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-// var Utils = require('./utils')
+const big = __nccwpck_require__(1754)
+const small = __nccwpck_require__(5173)
 
 exports.render = function (qrData, options, cb) {
-  var size = qrData.modules.size
-  var data = qrData.modules.data
+  if (options && options.small) {
+    return small.render(qrData, options, cb)
+  }
+  return big.render(qrData, options, cb)
+}
 
-  // var opts = Utils.getOptions(options)
+
+/***/ }),
+
+/***/ 5173:
+/***/ ((__unused_webpack_module, exports) => {
+
+const backgroundWhite = '\x1b[47m'
+const backgroundBlack = '\x1b[40m'
+const foregroundWhite = '\x1b[37m'
+const foregroundBlack = '\x1b[30m'
+const reset = '\x1b[0m'
+const lineSetupNormal = backgroundWhite + foregroundBlack // setup colors
+const lineSetupInverse = backgroundBlack + foregroundWhite // setup colors
+
+const createPalette = function (lineSetup, foregroundWhite, foregroundBlack) {
+  return {
+    // 1 ... white, 2 ... black, 0 ... transparent (default)
+
+    '00': reset + ' ' + lineSetup,
+    '01': reset + foregroundWhite + '▄' + lineSetup,
+    '02': reset + foregroundBlack + '▄' + lineSetup,
+    10: reset + foregroundWhite + '▀' + lineSetup,
+    11: ' ',
+    12: '▄',
+    20: reset + foregroundBlack + '▀' + lineSetup,
+    21: '▀',
+    22: '█'
+  }
+}
+
+/**
+ * Returns code for QR pixel
+ * @param {boolean[][]} modules
+ * @param {number} size
+ * @param {number} x
+ * @param {number} y
+ * @return {'0' | '1' | '2'}
+ */
+const mkCodePixel = function (modules, size, x, y) {
+  const sizePlus = size + 1
+  if ((x >= sizePlus) || (y >= sizePlus) || (y < -1) || (x < -1)) return '0'
+  if ((x >= size) || (y >= size) || (y < 0) || (x < 0)) return '1'
+  const idx = (y * size) + x
+  return modules[idx] ? '2' : '1'
+}
+
+/**
+ * Returns code for four QR pixels. Suitable as key in palette.
+ * @param {boolean[][]} modules
+ * @param {number} size
+ * @param {number} x
+ * @param {number} y
+ * @return {keyof palette}
+ */
+const mkCode = function (modules, size, x, y) {
+  return (
+    mkCodePixel(modules, size, x, y) +
+    mkCodePixel(modules, size, x, y + 1)
+  )
+}
+
+exports.render = function (qrData, options, cb) {
+  const size = qrData.modules.size
+  const data = qrData.modules.data
+
+  const inverse = !!(options && options.inverse)
+  const lineSetup = options && options.inverse ? lineSetupInverse : lineSetupNormal
+  const white = inverse ? foregroundBlack : foregroundWhite
+  const black = inverse ? foregroundWhite : foregroundBlack
+
+  const palette = createPalette(lineSetup, white, black)
+  const newLine = reset + '\n' + lineSetup
+
+  let output = lineSetup // setup colors
+
+  for (let y = -1; y < size + 1; y += 2) {
+    for (let x = -1; x < size; x++) {
+      output += palette[mkCode(data, size, x, y)]
+    }
+
+    output += palette[mkCode(data, size, size, y)] + newLine
+  }
+
+  output += reset
+
+  if (typeof cb === 'function') {
+    cb(null, output)
+  }
+
+  return output
+}
+
+
+/***/ }),
+
+/***/ 1754:
+/***/ ((__unused_webpack_module, exports) => {
+
+// let Utils = require('./utils')
+
+exports.render = function (qrData, options, cb) {
+  const size = qrData.modules.size
+  const data = qrData.modules.data
+
+  // let opts = Utils.getOptions(options)
 
   // use same scheme as https://github.com/gtanner/qrcode-terminal because it actually works! =)
-  var black = '\x1b[40m  \x1b[0m'
-  var white = '\x1b[47m  \x1b[0m'
+  const black = '\x1b[40m  \x1b[0m'
+  const white = '\x1b[47m  \x1b[0m'
 
-  var output = ''
-  var hMargin = Array(size + 3).join(white)
-  var vMargin = Array(2).join(white)
+  let output = ''
+  const hMargin = Array(size + 3).join(white)
+  const vMargin = Array(2).join(white)
 
   output += hMargin + '\n'
-  for (var i = 0; i < size; ++i) {
+  for (let i = 0; i < size; ++i) {
     output += white
-    for (var j = 0; j < size; j++) {
-      // var topModule = data[i * size + j]
-      // var bottomModule = data[(i + 1) * size + j]
+    for (let j = 0; j < size; j++) {
+      // let topModule = data[i * size + j]
+      // let bottomModule = data[(i + 1) * size + j]
 
       output += data[i * size + j] ? black : white// getBlockChar(topModule, bottomModule)
     }
@@ -18150,8 +18922,8 @@ exports.renderToFile = function renderToFile (path, qrData, options, cb) {
     options = undefined
   }
 
-  var fs = require('fs')
-  var utf8 = exports.render(qrData, options)
+  let fs = require('fs')
+  let utf8 = exports.render(qrData, options)
   fs.writeFile(path, utf8, cb)
 }
 */
@@ -18162,42 +18934,53 @@ exports.renderToFile = function renderToFile (path, qrData, options, cb) {
 /***/ 2671:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-var Utils = __nccwpck_require__(3973)
+const Utils = __nccwpck_require__(3973)
 
-var BLOCK_CHAR = {
+const BLOCK_CHAR = {
   WW: ' ',
   WB: '▄',
   BB: '█',
   BW: '▀'
 }
 
-function getBlockChar (top, bottom) {
-  if (top && bottom) return BLOCK_CHAR.BB
-  if (top && !bottom) return BLOCK_CHAR.BW
-  if (!top && bottom) return BLOCK_CHAR.WB
-  return BLOCK_CHAR.WW
+const INVERTED_BLOCK_CHAR = {
+  BB: ' ',
+  BW: '▄',
+  WW: '█',
+  WB: '▀'
+}
+
+function getBlockChar (top, bottom, blocks) {
+  if (top && bottom) return blocks.BB
+  if (top && !bottom) return blocks.BW
+  if (!top && bottom) return blocks.WB
+  return blocks.WW
 }
 
 exports.render = function (qrData, options, cb) {
-  var size = qrData.modules.size
-  var data = qrData.modules.data
+  const opts = Utils.getOptions(options)
+  let blocks = BLOCK_CHAR
+  if (opts.color.dark.hex === '#ffffff' || opts.color.light.hex === '#000000') {
+    blocks = INVERTED_BLOCK_CHAR
+  }
 
-  var opts = Utils.getOptions(options)
+  const size = qrData.modules.size
+  const data = qrData.modules.data
 
-  var output = ''
-  var hMargin = Array(size + (opts.margin * 2) + 1).join(BLOCK_CHAR.WW)
+  let output = ''
+  let hMargin = Array(size + (opts.margin * 2) + 1).join(blocks.WW)
   hMargin = Array((opts.margin / 2) + 1).join(hMargin + '\n')
 
-  var vMargin = Array(opts.margin + 1).join(BLOCK_CHAR.WW)
+  const vMargin = Array(opts.margin + 1).join(blocks.WW)
 
   output += hMargin
-  for (var i = 0; i < size; i += 2) {
+  for (let i = 0; i < size; i += 2) {
     output += vMargin
-    for (var j = 0; j < size; j++) {
-      var topModule = data[i * size + j]
-      var bottomModule = data[(i + 1) * size + j]
+    for (let j = 0; j < size; j++) {
+      const topModule = data[i * size + j]
+      const bottomModule = data[(i + 1) * size + j]
 
-      output += getBlockChar(topModule, bottomModule)
+      output += getBlockChar(topModule, bottomModule, blocks)
     }
 
     output += vMargin + '\n'
@@ -18218,8 +19001,8 @@ exports.renderToFile = function renderToFile (path, qrData, options, cb) {
     options = undefined
   }
 
-  var fs = __nccwpck_require__(7147)
-  var utf8 = exports.render(qrData, options)
+  const fs = __nccwpck_require__(7147)
+  const utf8 = exports.render(qrData, options)
   fs.writeFile(path, utf8, cb)
 }
 
@@ -18230,11 +19013,15 @@ exports.renderToFile = function renderToFile (path, qrData, options, cb) {
 /***/ ((__unused_webpack_module, exports) => {
 
 function hex2rgba (hex) {
+  if (typeof hex === 'number') {
+    hex = hex.toString()
+  }
+
   if (typeof hex !== 'string') {
     throw new Error('Color should be defined as hex string')
   }
 
-  var hexCode = hex.slice().replace('#', '').split('')
+  let hexCode = hex.slice().replace('#', '').split('')
   if (hexCode.length < 3 || hexCode.length === 5 || hexCode.length > 8) {
     throw new Error('Invalid hex color: ' + hex)
   }
@@ -18249,7 +19036,7 @@ function hex2rgba (hex) {
   // Add default alpha value
   if (hexCode.length === 6) hexCode.push('F', 'F')
 
-  var hexValue = parseInt(hexCode.join(''), 16)
+  const hexValue = parseInt(hexCode.join(''), 16)
 
   return {
     r: (hexValue >> 24) & 255,
@@ -18264,12 +19051,14 @@ exports.getOptions = function getOptions (options) {
   if (!options) options = {}
   if (!options.color) options.color = {}
 
-  var margin = typeof options.margin === 'undefined' ||
+  const margin = typeof options.margin === 'undefined' ||
     options.margin === null ||
-    options.margin < 0 ? 4 : options.margin
+    options.margin < 0
+    ? 4
+    : options.margin
 
-  var width = options.width && options.width >= 21 ? options.width : undefined
-  var scale = options.scale || 4
+  const width = options.width && options.width >= 21 ? options.width : undefined
+  const scale = options.scale || 4
 
   return {
     width: width,
@@ -18291,27 +19080,27 @@ exports.getScale = function getScale (qrSize, opts) {
 }
 
 exports.getImageWidth = function getImageWidth (qrSize, opts) {
-  var scale = exports.getScale(qrSize, opts)
+  const scale = exports.getScale(qrSize, opts)
   return Math.floor((qrSize + opts.margin * 2) * scale)
 }
 
 exports.qrToImageData = function qrToImageData (imgData, qr, opts) {
-  var size = qr.modules.size
-  var data = qr.modules.data
-  var scale = exports.getScale(size, opts)
-  var symbolSize = Math.floor((size + opts.margin * 2) * scale)
-  var scaledMargin = opts.margin * scale
-  var palette = [opts.color.light, opts.color.dark]
+  const size = qr.modules.size
+  const data = qr.modules.data
+  const scale = exports.getScale(size, opts)
+  const symbolSize = Math.floor((size + opts.margin * 2) * scale)
+  const scaledMargin = opts.margin * scale
+  const palette = [opts.color.light, opts.color.dark]
 
-  for (var i = 0; i < symbolSize; i++) {
-    for (var j = 0; j < symbolSize; j++) {
-      var posDst = (i * symbolSize + j) * 4
-      var pxColor = opts.color.light
+  for (let i = 0; i < symbolSize; i++) {
+    for (let j = 0; j < symbolSize; j++) {
+      let posDst = (i * symbolSize + j) * 4
+      let pxColor = opts.color.light
 
       if (i >= scaledMargin && j >= scaledMargin &&
         i < symbolSize - scaledMargin && j < symbolSize - scaledMargin) {
-        var iSrc = Math.floor((i - scaledMargin) / scale)
-        var jSrc = Math.floor((j - scaledMargin) / scale)
+        const iSrc = Math.floor((i - scaledMargin) / scale)
+        const jSrc = Math.floor((j - scaledMargin) / scale)
         pxColor = palette[data[iSrc * size + jSrc] ? 1 : 0]
       }
 
@@ -18329,12 +19118,12 @@ exports.qrToImageData = function qrToImageData (imgData, qr, opts) {
 /***/ 4610:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
-var canPromise = __nccwpck_require__(1934)
-var QRCode = __nccwpck_require__(6883)
-var PngRenderer = __nccwpck_require__(9874)
-var Utf8Renderer = __nccwpck_require__(2671)
-var TerminalRenderer = __nccwpck_require__(8649)
-var SvgRenderer = __nccwpck_require__(6725)
+const canPromise = __nccwpck_require__(7311)
+const QRCode = __nccwpck_require__(6883)
+const PngRenderer = __nccwpck_require__(9874)
+const Utf8Renderer = __nccwpck_require__(2671)
+const TerminalRenderer = __nccwpck_require__(8649)
+const SvgRenderer = __nccwpck_require__(6725)
 
 function checkParams (text, opts, cb) {
   if (typeof text === 'undefined') {
@@ -18399,7 +19188,7 @@ function render (renderFunc, text, params) {
   if (!params.cb) {
     return new Promise(function (resolve, reject) {
       try {
-        var data = QRCode.create(text, params.opts)
+        const data = QRCode.create(text, params.opts)
         return renderFunc(data, params.opts, function (err, data) {
           return err ? reject(err) : resolve(data)
         })
@@ -18410,7 +19199,7 @@ function render (renderFunc, text, params) {
   }
 
   try {
-    var data = QRCode.create(text, params.opts)
+    const data = QRCode.create(text, params.opts)
     return renderFunc(data, params.opts, params.cb)
   } catch (e) {
     params.cb(e)
@@ -18422,20 +19211,21 @@ exports.create = QRCode.create
 exports.toCanvas = __nccwpck_require__(915).toCanvas
 
 exports.toString = function toString (text, opts, cb) {
-  var params = checkParams(text, opts, cb)
-  var renderer = getStringRendererFromType(params.opts.type)
+  const params = checkParams(text, opts, cb)
+  const type = params.opts ? params.opts.type : undefined
+  const renderer = getStringRendererFromType(type)
   return render(renderer.render, text, params)
 }
 
 exports.toDataURL = function toDataURL (text, opts, cb) {
-  var params = checkParams(text, opts, cb)
-  var renderer = getRendererFromType(params.opts.type)
+  const params = checkParams(text, opts, cb)
+  const renderer = getRendererFromType(params.opts.type)
   return render(renderer.renderToDataURL, text, params)
 }
 
 exports.toBuffer = function toBuffer (text, opts, cb) {
-  var params = checkParams(text, opts, cb)
-  var renderer = getRendererFromType(params.opts.type)
+  const params = checkParams(text, opts, cb)
+  const renderer = getRendererFromType(params.opts.type)
   return render(renderer.renderToBuffer, text, params)
 }
 
@@ -18448,10 +19238,10 @@ exports.toFile = function toFile (path, text, opts, cb) {
     throw new Error('Too few arguments provided')
   }
 
-  var params = checkParams(text, opts, cb)
-  var type = params.opts.type || getTypeFromFilename(path)
-  var renderer = getRendererFromType(type)
-  var renderToFile = renderer.renderToFile.bind(null, path)
+  const params = checkParams(text, opts, cb)
+  const type = params.opts.type || getTypeFromFilename(path)
+  const renderer = getRendererFromType(type)
+  const renderToFile = renderer.renderToFile.bind(null, path)
 
   return render(renderToFile, text, params)
 }
@@ -18461,19 +19251,11 @@ exports.toFileStream = function toFileStream (stream, text, opts) {
     throw new Error('Too few arguments provided')
   }
 
-  var params = checkParams(text, opts, stream.emit.bind(stream, 'error'))
-  var renderer = getRendererFromType('png') // Only png support for now
-  var renderToFileStream = renderer.renderToFileStream.bind(null, stream)
+  const params = checkParams(text, opts, stream.emit.bind(stream, 'error'))
+  const renderer = getRendererFromType('png') // Only png support for now
+  const renderToFileStream = renderer.renderToFileStream.bind(null, stream)
   render(renderToFileStream, text, params)
 }
-
-
-/***/ }),
-
-/***/ 5693:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-module.exports = __nccwpck_require__(4300).Buffer
 
 
 /***/ }),
@@ -18816,15 +19598,649 @@ exports.fromPromise = function (fn) {
 
 /***/ }),
 
-/***/ 8640:
-/***/ (function(module) {
+/***/ 5840:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
-module.exports = (typeof self === 'object' && self.self === self && self) ||
-  (typeof global === 'object' && global.global === global && global) ||
-  this
 
+Object.defineProperty(exports, "__esModule", ({
+  value: true
+}));
+Object.defineProperty(exports, "v1", ({
+  enumerable: true,
+  get: function () {
+    return _v.default;
+  }
+}));
+Object.defineProperty(exports, "v3", ({
+  enumerable: true,
+  get: function () {
+    return _v2.default;
+  }
+}));
+Object.defineProperty(exports, "v4", ({
+  enumerable: true,
+  get: function () {
+    return _v3.default;
+  }
+}));
+Object.defineProperty(exports, "v5", ({
+  enumerable: true,
+  get: function () {
+    return _v4.default;
+  }
+}));
+Object.defineProperty(exports, "NIL", ({
+  enumerable: true,
+  get: function () {
+    return _nil.default;
+  }
+}));
+Object.defineProperty(exports, "version", ({
+  enumerable: true,
+  get: function () {
+    return _version.default;
+  }
+}));
+Object.defineProperty(exports, "validate", ({
+  enumerable: true,
+  get: function () {
+    return _validate.default;
+  }
+}));
+Object.defineProperty(exports, "stringify", ({
+  enumerable: true,
+  get: function () {
+    return _stringify.default;
+  }
+}));
+Object.defineProperty(exports, "parse", ({
+  enumerable: true,
+  get: function () {
+    return _parse.default;
+  }
+}));
+
+var _v = _interopRequireDefault(__nccwpck_require__(8628));
+
+var _v2 = _interopRequireDefault(__nccwpck_require__(6409));
+
+var _v3 = _interopRequireDefault(__nccwpck_require__(5122));
+
+var _v4 = _interopRequireDefault(__nccwpck_require__(9120));
+
+var _nil = _interopRequireDefault(__nccwpck_require__(5332));
+
+var _version = _interopRequireDefault(__nccwpck_require__(1595));
+
+var _validate = _interopRequireDefault(__nccwpck_require__(6900));
+
+var _stringify = _interopRequireDefault(__nccwpck_require__(8950));
+
+var _parse = _interopRequireDefault(__nccwpck_require__(2746));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+/***/ }),
+
+/***/ 4569:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({
+  value: true
+}));
+exports["default"] = void 0;
+
+var _crypto = _interopRequireDefault(__nccwpck_require__(6113));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function md5(bytes) {
+  if (Array.isArray(bytes)) {
+    bytes = Buffer.from(bytes);
+  } else if (typeof bytes === 'string') {
+    bytes = Buffer.from(bytes, 'utf8');
+  }
+
+  return _crypto.default.createHash('md5').update(bytes).digest();
+}
+
+var _default = md5;
+exports["default"] = _default;
+
+/***/ }),
+
+/***/ 5332:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({
+  value: true
+}));
+exports["default"] = void 0;
+var _default = '00000000-0000-0000-0000-000000000000';
+exports["default"] = _default;
+
+/***/ }),
+
+/***/ 2746:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({
+  value: true
+}));
+exports["default"] = void 0;
+
+var _validate = _interopRequireDefault(__nccwpck_require__(6900));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function parse(uuid) {
+  if (!(0, _validate.default)(uuid)) {
+    throw TypeError('Invalid UUID');
+  }
+
+  let v;
+  const arr = new Uint8Array(16); // Parse ########-....-....-....-............
+
+  arr[0] = (v = parseInt(uuid.slice(0, 8), 16)) >>> 24;
+  arr[1] = v >>> 16 & 0xff;
+  arr[2] = v >>> 8 & 0xff;
+  arr[3] = v & 0xff; // Parse ........-####-....-....-............
+
+  arr[4] = (v = parseInt(uuid.slice(9, 13), 16)) >>> 8;
+  arr[5] = v & 0xff; // Parse ........-....-####-....-............
+
+  arr[6] = (v = parseInt(uuid.slice(14, 18), 16)) >>> 8;
+  arr[7] = v & 0xff; // Parse ........-....-....-####-............
+
+  arr[8] = (v = parseInt(uuid.slice(19, 23), 16)) >>> 8;
+  arr[9] = v & 0xff; // Parse ........-....-....-....-############
+  // (Use "/" to avoid 32-bit truncation when bit-shifting high-order bytes)
+
+  arr[10] = (v = parseInt(uuid.slice(24, 36), 16)) / 0x10000000000 & 0xff;
+  arr[11] = v / 0x100000000 & 0xff;
+  arr[12] = v >>> 24 & 0xff;
+  arr[13] = v >>> 16 & 0xff;
+  arr[14] = v >>> 8 & 0xff;
+  arr[15] = v & 0xff;
+  return arr;
+}
+
+var _default = parse;
+exports["default"] = _default;
+
+/***/ }),
+
+/***/ 814:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({
+  value: true
+}));
+exports["default"] = void 0;
+var _default = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|00000000-0000-0000-0000-000000000000)$/i;
+exports["default"] = _default;
+
+/***/ }),
+
+/***/ 807:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({
+  value: true
+}));
+exports["default"] = rng;
+
+var _crypto = _interopRequireDefault(__nccwpck_require__(6113));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+const rnds8Pool = new Uint8Array(256); // # of random values to pre-allocate
+
+let poolPtr = rnds8Pool.length;
+
+function rng() {
+  if (poolPtr > rnds8Pool.length - 16) {
+    _crypto.default.randomFillSync(rnds8Pool);
+
+    poolPtr = 0;
+  }
+
+  return rnds8Pool.slice(poolPtr, poolPtr += 16);
+}
+
+/***/ }),
+
+/***/ 5274:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({
+  value: true
+}));
+exports["default"] = void 0;
+
+var _crypto = _interopRequireDefault(__nccwpck_require__(6113));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function sha1(bytes) {
+  if (Array.isArray(bytes)) {
+    bytes = Buffer.from(bytes);
+  } else if (typeof bytes === 'string') {
+    bytes = Buffer.from(bytes, 'utf8');
+  }
+
+  return _crypto.default.createHash('sha1').update(bytes).digest();
+}
+
+var _default = sha1;
+exports["default"] = _default;
+
+/***/ }),
+
+/***/ 8950:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({
+  value: true
+}));
+exports["default"] = void 0;
+
+var _validate = _interopRequireDefault(__nccwpck_require__(6900));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+/**
+ * Convert array of 16 byte values to UUID string format of the form:
+ * XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+ */
+const byteToHex = [];
+
+for (let i = 0; i < 256; ++i) {
+  byteToHex.push((i + 0x100).toString(16).substr(1));
+}
+
+function stringify(arr, offset = 0) {
+  // Note: Be careful editing this code!  It's been tuned for performance
+  // and works in ways you may not expect. See https://github.com/uuidjs/uuid/pull/434
+  const uuid = (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + '-' + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + '-' + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + '-' + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + '-' + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase(); // Consistency check for valid UUID.  If this throws, it's likely due to one
+  // of the following:
+  // - One or more input array values don't map to a hex octet (leading to
+  // "undefined" in the uuid)
+  // - Invalid input values for the RFC `version` or `variant` fields
+
+  if (!(0, _validate.default)(uuid)) {
+    throw TypeError('Stringified UUID is invalid');
+  }
+
+  return uuid;
+}
+
+var _default = stringify;
+exports["default"] = _default;
+
+/***/ }),
+
+/***/ 8628:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({
+  value: true
+}));
+exports["default"] = void 0;
+
+var _rng = _interopRequireDefault(__nccwpck_require__(807));
+
+var _stringify = _interopRequireDefault(__nccwpck_require__(8950));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+// **`v1()` - Generate time-based UUID**
+//
+// Inspired by https://github.com/LiosK/UUID.js
+// and http://docs.python.org/library/uuid.html
+let _nodeId;
+
+let _clockseq; // Previous uuid creation time
+
+
+let _lastMSecs = 0;
+let _lastNSecs = 0; // See https://github.com/uuidjs/uuid for API details
+
+function v1(options, buf, offset) {
+  let i = buf && offset || 0;
+  const b = buf || new Array(16);
+  options = options || {};
+  let node = options.node || _nodeId;
+  let clockseq = options.clockseq !== undefined ? options.clockseq : _clockseq; // node and clockseq need to be initialized to random values if they're not
+  // specified.  We do this lazily to minimize issues related to insufficient
+  // system entropy.  See #189
+
+  if (node == null || clockseq == null) {
+    const seedBytes = options.random || (options.rng || _rng.default)();
+
+    if (node == null) {
+      // Per 4.5, create and 48-bit node id, (47 random bits + multicast bit = 1)
+      node = _nodeId = [seedBytes[0] | 0x01, seedBytes[1], seedBytes[2], seedBytes[3], seedBytes[4], seedBytes[5]];
+    }
+
+    if (clockseq == null) {
+      // Per 4.2.2, randomize (14 bit) clockseq
+      clockseq = _clockseq = (seedBytes[6] << 8 | seedBytes[7]) & 0x3fff;
+    }
+  } // UUID timestamps are 100 nano-second units since the Gregorian epoch,
+  // (1582-10-15 00:00).  JSNumbers aren't precise enough for this, so
+  // time is handled internally as 'msecs' (integer milliseconds) and 'nsecs'
+  // (100-nanoseconds offset from msecs) since unix epoch, 1970-01-01 00:00.
+
+
+  let msecs = options.msecs !== undefined ? options.msecs : Date.now(); // Per 4.2.1.2, use count of uuid's generated during the current clock
+  // cycle to simulate higher resolution clock
+
+  let nsecs = options.nsecs !== undefined ? options.nsecs : _lastNSecs + 1; // Time since last uuid creation (in msecs)
+
+  const dt = msecs - _lastMSecs + (nsecs - _lastNSecs) / 10000; // Per 4.2.1.2, Bump clockseq on clock regression
+
+  if (dt < 0 && options.clockseq === undefined) {
+    clockseq = clockseq + 1 & 0x3fff;
+  } // Reset nsecs if clock regresses (new clockseq) or we've moved onto a new
+  // time interval
+
+
+  if ((dt < 0 || msecs > _lastMSecs) && options.nsecs === undefined) {
+    nsecs = 0;
+  } // Per 4.2.1.2 Throw error if too many uuids are requested
+
+
+  if (nsecs >= 10000) {
+    throw new Error("uuid.v1(): Can't create more than 10M uuids/sec");
+  }
+
+  _lastMSecs = msecs;
+  _lastNSecs = nsecs;
+  _clockseq = clockseq; // Per 4.1.4 - Convert from unix epoch to Gregorian epoch
+
+  msecs += 12219292800000; // `time_low`
+
+  const tl = ((msecs & 0xfffffff) * 10000 + nsecs) % 0x100000000;
+  b[i++] = tl >>> 24 & 0xff;
+  b[i++] = tl >>> 16 & 0xff;
+  b[i++] = tl >>> 8 & 0xff;
+  b[i++] = tl & 0xff; // `time_mid`
+
+  const tmh = msecs / 0x100000000 * 10000 & 0xfffffff;
+  b[i++] = tmh >>> 8 & 0xff;
+  b[i++] = tmh & 0xff; // `time_high_and_version`
+
+  b[i++] = tmh >>> 24 & 0xf | 0x10; // include version
+
+  b[i++] = tmh >>> 16 & 0xff; // `clock_seq_hi_and_reserved` (Per 4.2.2 - include variant)
+
+  b[i++] = clockseq >>> 8 | 0x80; // `clock_seq_low`
+
+  b[i++] = clockseq & 0xff; // `node`
+
+  for (let n = 0; n < 6; ++n) {
+    b[i + n] = node[n];
+  }
+
+  return buf || (0, _stringify.default)(b);
+}
+
+var _default = v1;
+exports["default"] = _default;
+
+/***/ }),
+
+/***/ 6409:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({
+  value: true
+}));
+exports["default"] = void 0;
+
+var _v = _interopRequireDefault(__nccwpck_require__(5998));
+
+var _md = _interopRequireDefault(__nccwpck_require__(4569));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+const v3 = (0, _v.default)('v3', 0x30, _md.default);
+var _default = v3;
+exports["default"] = _default;
+
+/***/ }),
+
+/***/ 5998:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({
+  value: true
+}));
+exports["default"] = _default;
+exports.URL = exports.DNS = void 0;
+
+var _stringify = _interopRequireDefault(__nccwpck_require__(8950));
+
+var _parse = _interopRequireDefault(__nccwpck_require__(2746));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function stringToBytes(str) {
+  str = unescape(encodeURIComponent(str)); // UTF8 escape
+
+  const bytes = [];
+
+  for (let i = 0; i < str.length; ++i) {
+    bytes.push(str.charCodeAt(i));
+  }
+
+  return bytes;
+}
+
+const DNS = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
+exports.DNS = DNS;
+const URL = '6ba7b811-9dad-11d1-80b4-00c04fd430c8';
+exports.URL = URL;
+
+function _default(name, version, hashfunc) {
+  function generateUUID(value, namespace, buf, offset) {
+    if (typeof value === 'string') {
+      value = stringToBytes(value);
+    }
+
+    if (typeof namespace === 'string') {
+      namespace = (0, _parse.default)(namespace);
+    }
+
+    if (namespace.length !== 16) {
+      throw TypeError('Namespace must be array-like (16 iterable integer values, 0-255)');
+    } // Compute hash of namespace and value, Per 4.3
+    // Future: Use spread syntax when supported on all platforms, e.g. `bytes =
+    // hashfunc([...namespace, ... value])`
+
+
+    let bytes = new Uint8Array(16 + value.length);
+    bytes.set(namespace);
+    bytes.set(value, namespace.length);
+    bytes = hashfunc(bytes);
+    bytes[6] = bytes[6] & 0x0f | version;
+    bytes[8] = bytes[8] & 0x3f | 0x80;
+
+    if (buf) {
+      offset = offset || 0;
+
+      for (let i = 0; i < 16; ++i) {
+        buf[offset + i] = bytes[i];
+      }
+
+      return buf;
+    }
+
+    return (0, _stringify.default)(bytes);
+  } // Function#name is not settable on some platforms (#270)
+
+
+  try {
+    generateUUID.name = name; // eslint-disable-next-line no-empty
+  } catch (err) {} // For CommonJS default export support
+
+
+  generateUUID.DNS = DNS;
+  generateUUID.URL = URL;
+  return generateUUID;
+}
+
+/***/ }),
+
+/***/ 5122:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({
+  value: true
+}));
+exports["default"] = void 0;
+
+var _rng = _interopRequireDefault(__nccwpck_require__(807));
+
+var _stringify = _interopRequireDefault(__nccwpck_require__(8950));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function v4(options, buf, offset) {
+  options = options || {};
+
+  const rnds = options.random || (options.rng || _rng.default)(); // Per 4.4, set bits for version and `clock_seq_hi_and_reserved`
+
+
+  rnds[6] = rnds[6] & 0x0f | 0x40;
+  rnds[8] = rnds[8] & 0x3f | 0x80; // Copy bytes to buffer, if provided
+
+  if (buf) {
+    offset = offset || 0;
+
+    for (let i = 0; i < 16; ++i) {
+      buf[offset + i] = rnds[i];
+    }
+
+    return buf;
+  }
+
+  return (0, _stringify.default)(rnds);
+}
+
+var _default = v4;
+exports["default"] = _default;
+
+/***/ }),
+
+/***/ 9120:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({
+  value: true
+}));
+exports["default"] = void 0;
+
+var _v = _interopRequireDefault(__nccwpck_require__(5998));
+
+var _sha = _interopRequireDefault(__nccwpck_require__(5274));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+const v5 = (0, _v.default)('v5', 0x50, _sha.default);
+var _default = v5;
+exports["default"] = _default;
+
+/***/ }),
+
+/***/ 6900:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({
+  value: true
+}));
+exports["default"] = void 0;
+
+var _regex = _interopRequireDefault(__nccwpck_require__(814));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function validate(uuid) {
+  return typeof uuid === 'string' && _regex.default.test(uuid);
+}
+
+var _default = validate;
+exports["default"] = _default;
+
+/***/ }),
+
+/***/ 1595:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({
+  value: true
+}));
+exports["default"] = void 0;
+
+var _validate = _interopRequireDefault(__nccwpck_require__(6900));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function version(uuid) {
+  if (!(0, _validate.default)(uuid)) {
+    throw TypeError('Invalid UUID');
+  }
+
+  return parseInt(uuid.substr(14, 1), 16);
+}
+
+var _default = version;
+exports["default"] = _default;
 
 /***/ }),
 
@@ -18905,6 +20321,14 @@ module.exports = require("child_process");
 
 "use strict";
 module.exports = require("constants");
+
+/***/ }),
+
+/***/ 6113:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("crypto");
 
 /***/ }),
 
