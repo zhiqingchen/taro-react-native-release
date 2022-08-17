@@ -39,6 +39,7 @@ export async function run(): Promise<void> {
     const appName = core.getInput('appname')
     const logo = core.getInput('logo')
     const releaseprefix = core.getInput('releaseprefix')
+    const prerelease = core.getInput('prerelease') === 'true'
     const token = core.getInput('token')
     const git = github.getOctokit(token)
 
@@ -110,6 +111,7 @@ export async function run(): Promise<void> {
 
   `,
         owner,
+        prerelease,
         repo: respository.replace(`${owner}/`, ''),
         tag_name: refname
       })

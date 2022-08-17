@@ -81,6 +81,10 @@ inputs:
     required: false
     description: 'action working directory'
     default: '.'
+  prerelease:
+    required: false
+    description: 'whether to generate a prerelease'
+    default: 'false'
 runs:
   using: 'node12'
   main: 'dist/index.js'
